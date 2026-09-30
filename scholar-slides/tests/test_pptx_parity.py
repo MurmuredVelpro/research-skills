@@ -13,6 +13,16 @@ class TestNorm:
     def test_strip_math_keeps_inner(self):
         assert vp.strip_math("scaled by $1/\\sqrt{d_k}$ here") == "scaled by 1/\\sqrt{d_k} here"
 
+    def test_display_math_does_not_leave_stray_delimiters(self):
+        # JS MATH_RE consumes $$...$$ as one block; the old Python mirror only knew
+        # single-$, leaving "$x^2$" behind -> false missing-text parity failures.
+        assert vp.strip_math("loss is $$x^2$$ here") == "loss is x^2 here"
+
+    def test_emphasis_spans_cross_newlines(self):
+        # JS EMPHASIS_RE uses [\s\S]; the old Python "." split the span and left
+        # literal == markers in the normalized text.
+        assert vp.strip_math("==bold\nline==") == "bold\nline"
+
     def test_norm_collapses_and_lowercases(self):
         assert vp.norm("  PANDA  wins\nboth ") == "panda wins both"
 

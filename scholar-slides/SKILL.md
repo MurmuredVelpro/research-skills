@@ -3,10 +3,12 @@ name: scholar-slides
 description: >-
   Use when the user wants a research paper, arXiv/DOI link, or research topic turned
   into academic slides — journal club / lab meeting (组会汇报), thesis defense (答辩幻灯片),
-  conference or job talk (学术报告), poster, or grant pitch — or shares a paper and asks
+  or conference / job talk (学术报告) — or shares a paper and asks
   to "make slides / 做成 PPT / 讲一下这篇论文", especially when equations, numbers,
   figures, and citations must stay accurate and editable. NOT for marketing/pitch decks
-  with no scholarly source, and NOT for writing the paper itself.
+  with no scholarly source, NOT for writing the paper itself, and NOT for stylized
+  visual/image decks (use paper-slide-deck for those). No poster or grant-pitch
+  workflow exists in this skill.
 ---
 
 # scholar-slides
@@ -20,7 +22,7 @@ never fabricated.
 Design rationale and the survey it is built on live in `docs/`; build plan in `IMPLEMENTATION_PLAN.md`.
 
 ## Locked stack (see docs/03-design-proposal.md §0)
-- **Render backend:** reveal.js + KaTeX → vector PDF (Playwright). Editable PPTX / Beamer later.
+- **Render backend:** reveal.js + KaTeX → vector PDF (Playwright) + editable PPTX (parity-tested). Beamer later.
 - **Default deck type:** lab meeting / journal club (组会) — reading-first, high density.
 - **Citations:** Zotero-first (`mcp__zotero__*`), Crossref/arXiv/DOI fallback.
 - **Language:** bilingual, English-default.

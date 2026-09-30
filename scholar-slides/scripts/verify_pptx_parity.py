@@ -24,13 +24,20 @@ import json
 import re
 import sys
 
-_MATH = re.compile(r"\$([^$]+)\$")
-_EMPH = re.compile(r"==(?:[kpw]\|)?(.+?)==")
+_MATH = re.compile(r"\$\$(.+?)\$\$|\$([^$\n]+?)\$", re.DOTALL)
+_EMPH = re.compile(r"==(?:[kpw]\|)?([\s\S]+?)==")
+
+
+def _math_repl(match: "re.Match[str]") -> str:
+    return match.group(1) if match.group(1) is not None else match.group(2)
 
 
 def strip_math(s: str) -> str:
-    """Mirror pptx_layout.stripInlineMath: drop $...$ math and ==...== emphasis, keep inner text."""
-    return _EMPH.sub(r"\1", _MATH.sub(r"\1", str(s or "")))
+    """Mirror pptx_layout.stripInlineMath: drop $...$/$$...$$ math and ==...== emphasis, keep
+    inner text. The regexes must match the JS side exactly: the old single-``$`` pattern left a
+    stray ``$x^2$`` behind on ``$$x^2$$`` display math, and ``.`` (no newline) split emphasis
+    spans across lines — both produced false missing-text parity failures."""
+    return _EMPH.sub(r"\1", _MATH.sub(_math_repl, str(s or "")))
 
 
 def norm(s: str) -> str:

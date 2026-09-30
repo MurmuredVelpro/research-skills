@@ -1,6 +1,18 @@
 """Unit + (live) integration tests for the citation resolver."""
+import socket
+
 import fetch_bib as fb
 import pytest
+
+
+def _network_available() -> bool:
+    """The live test manages its own availability (conftest only gates PDF-fixture tests):
+    probe the resolver host and skip — not fail — when offline."""
+    try:
+        socket.create_connection(("export.arxiv.org", 443), timeout=3).close()
+        return True
+    except OSError:
+        return False
 
 
 class TestClassify:
@@ -68,6 +80,7 @@ def test_parse_arxiv_atom():
 
 
 @pytest.mark.integration
+@pytest.mark.skipif(not _network_available(), reason="offline: export.arxiv.org unreachable")
 def test_resolve_arxiv_live():
     e = fb.resolve("1706.03762")
     assert e.get("resolved") and "Attention" in e["title"] and e["arxiv"] == "1706.03762"

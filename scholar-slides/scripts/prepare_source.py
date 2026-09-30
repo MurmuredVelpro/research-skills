@@ -29,18 +29,22 @@ _ARXIV_ID = re.compile(r"^(\d{4}\.\d{4,5})(v\d+)?$")
 _ARXIV_URL = re.compile(r"arxiv\.org/(?:abs|pdf)/(\d{4}\.\d{4,5})", re.IGNORECASE)
 
 
+def _arxiv_id_of(arg) -> str | None:
+    """The bare arXiv id if ``arg`` is an id or an arXiv URL, else None."""
+    m = _ARXIV_ID.match(str(arg).strip())
+    if m:
+        return m.group(1)
+    m = _ARXIV_URL.search(str(arg))
+    if m:
+        return m.group(1)
+    return None
+
+
 def resolve_input(arg, work_dir):
     """Return a local PDF path. Downloads from arXiv when given an id or arXiv URL."""
     if os.path.isfile(arg):
         return arg
-    arxiv_id = None
-    m = _ARXIV_ID.match(arg.strip())
-    if m:
-        arxiv_id = m.group(1)
-    else:
-        m = _ARXIV_URL.search(arg)
-        if m:
-            arxiv_id = m.group(1)
+    arxiv_id = _arxiv_id_of(arg)
     if not arxiv_id:
         raise FileNotFoundError(f"not a file, arXiv id, or arXiv URL: {arg!r}")
     import requests
@@ -55,9 +59,21 @@ def resolve_input(arg, work_dir):
     return dest
 
 
+def _stem_for(arg) -> str:
+    """Output-dir stem for a source argument.
+
+    An arXiv id/URL is its own stem: splitext would eat the decimal
+    ("1706.03762" -> out/1706) and \\W-sanitizing would mangle it (1706_03762).
+    """
+    arxiv_stem = _arxiv_id_of(arg)
+    if arxiv_stem:
+        return arxiv_stem
+    stem = re.sub(r"\W+", "_", os.path.splitext(os.path.basename(str(arg)))[0])
+    return stem if stem.strip("_") else "source"
+
+
 def prepare(arg, out_dir=None, dpi=200):
-    stem = re.sub(r"\W+", "_", os.path.splitext(os.path.basename(str(arg)))[0]) or "source"
-    out_dir = out_dir or os.path.join("out", stem)
+    out_dir = out_dir or os.path.join("out", _stem_for(arg))
     os.makedirs(out_dir, exist_ok=True)
 
     pdf = resolve_input(arg, out_dir)
