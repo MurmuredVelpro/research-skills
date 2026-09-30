@@ -13,3 +13,7 @@ node_modules/
 # Python
 __pycache__/
 *.pyc
+
+# Local working notes & generated deck artifacts (not for remote)
+lit-search/learnings/2026-09-21-四个skill只长出同一个判定点.md
+scholar-slides/yolov13-deck/

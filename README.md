@@ -10,7 +10,7 @@ A collection of Claude Code skills for academic research workflows.
 | [paper-slide-deck](./paper-slide-deck/) | Stylized slide **images** (17 T2I aesthetic styles) for reading & sharing — any content | `/paper-slide-deck content.md --style watercolor` |
 | [research-proposal](./research-proposal/) | Generate PhD research proposals with Nature Reviews-style academic writing | `/research-proposal`, "research proposal", "PhD proposal", "研究计划" |
 | [scholar-slides](./scholar-slides/) | Fidelity-first academic decks for a live talk — vector equations, extracted figures, grounded citations, editable PPTX | "make slides", "组会 PPT", "答辩幻灯片", a paper PDF / arXiv / DOI |
-| [lit-search](./lit-search/) | Exhaustive time-windowed literature retrieval with **measurable recall** — quality-tiered DOI list + formatted references | `/lit-search`, "systematic review", "开题", "把某方向近 N 年文献检索全" |
+| [lit-search](./lit-search/) | Exhaustive time-windowed literature retrieval with **measurable recall** — quality-tiered DOI list + formatted references | `/lit-search`, "systematic review", "开题报告的文献检索/查全部分", "把某方向近 N 年文献检索全" |
 
 > **Slides from a paper? Two different tools, on purpose.** Use **scholar-slides** for a faithful,
 > editable *live talk* — equations, numbers, tables, and citations stay exact and projector-ready.
@@ -46,42 +46,39 @@ cd ~/.claude/skills/lit-search     && ./install.sh   # needs uv + Python 3.11+
 
 ## Medical Imaging Review Skill
 
-A systematic workflow for writing survey papers, systematic reviews, and literature analyses on medical imaging AI topics.
+Plan, conduct, and draft a medical imaging AI review whose every claim audits back to first sources — narrative review, method survey, scoping review, or systematic review **with qualitative synthesis only** (meta-analysis / umbrella review are explicitly out of scope and route out to a specialized methods workflow).
 
 ### Features
 
-- **Structured 8-phase write-with-verify workflow** (review-type routing → paradigm capture → init → collect-and-verify → outline/taxonomy → per-claim-verified writing → peer review → submission prep)
-- **Review-type routing** — narrative / method survey / scoping / systematic, with matching reporting standards (PRISMA 2020, QUADAS-3, CLAIM 2024, TRIPOD+AI)
-- **Citation integrity as a hard gate** — every `[N]` verified for existence, author, number, and direction before commit; an executable audit script (`scripts/audit_manuscript.py`) locked by a fixture test suite
-- **Evidence-calibrated writing voice** — match claim strength to evidence; the default-hedging register is explicitly removed as an AI tell
-- **Domain-specific 3-axis method taxonomy** across multiple medical imaging domains
-- **Quality checklists** and **Zotero-first literature collection** with tool-portable fallbacks
+- **Four-route contract** — `narrative` / `method-survey` / `scoping` / `systematic` route tokens frozen at intake; matching reporting standards (PRISMA 2020/ScR, QUADAS-3, CLAIM 2024, TRIPOD+AI, PROBAST-family, SWiM) per route
+- **Immutable project contract** — `init_review_project.py` scaffolds a timestamped project (`review_config.yaml`, `REVIEW_CONTEXT.md`, `claim_ledger.csv`, `references.bib`, `manuscript.md`, route-specific checklists) with atomic staging; the route cannot silently change after collection begins
+- **Stable citekeys, never mutable numbers** — the working draft cites `[@smith2024model]`; the target journal's numeric/author-date style is rendered only at final formatting
+- **claim_ledger discipline** — one atomic claim–source pair per row (26 columns: metric, direction, evidence excerpt, verification status, …); drafting reads the ledger, not model memory
+- **Executable audit with honest semantics** — `scripts/audit_manuscript.py` binds manuscript citekeys ↔ `references.bib` ↔ claim ledger; `gate_status` can be `fail` / `warning` / `not_assessed` but **never `pass`** (a clean audit proves nothing was found wrong, not that the review is correct); exit codes 0/1/2
+- **Human gates stay human** — screening, charting/extraction, risk-of-bias, and certainty steps are logged with named roles and never auto-passed
 
-### Supported Domains
+### Route-aware workflow
 
-- Coronary Artery Analysis (CCTA)
-- Lung Imaging (CT/X-ray)
-- Brain Imaging (MRI/CT)
-- Cardiac Imaging (MRI/CT/Echo)
-- Pathology (Whole Slide Images)
-- Retinal Imaging (Fundus/OCT)
+1. Route and configure (intake gate) → 2. Initialize project → 3. Design methods (protocol + search plan frozen before screening) → 4. Collect and register sources → 5. Pass human gates → 6. Synthesize within scope → 7. Draft from verified records → 8. Validate and report status.
 
 ### Files
 
 | Path | Description |
 |------|-------------|
-| `SKILL.md` | Main skill definition and quick reference |
-| `references/REVIEW_TYPES.md` | Review-type routing (narrative / scoping / systematic / meta-analysis) |
-| `references/REPORTING_STANDARDS.md` | PRISMA / QUADAS-3 / CLAIM / TRIPOD+AI standards fit |
-| `references/WORKFLOW.md` | Detailed 8-phase workflow guide |
-| `references/PARADIGM.md` | Phase 0 exemplar-review style capture |
-| `references/CITATION_INTEGRITY.md` | The citation verification protocol (5 rules) |
-| `references/HALLUCINATION_PATTERNS.md` | 10 LLM hallucination indicators to self-check |
-| `references/TEMPLATES.md` | Project file templates |
+| `SKILL.md` | Route contract, project contract, workflow, audit usage |
+| `references/REVIEW_TYPES.md` | Route routing + per-route artifacts and gates |
+| `references/REPORTING_STANDARDS.md` | PRISMA / QUADAS-3 / CLAIM / TRIPOD+AI / SWiM standards fit |
+| `references/WORKFLOW.md` | Phase-by-phase workflow guide (Phase -1 … 6) |
+| `references/PARADIGM.md` | Optional exemplar style capture → `style_profile.json` (schema 2.0) |
+| `references/CITATION_INTEGRITY.md` | Citekey/claim-ledger verification protocol |
+| `references/HALLUCINATION_PATTERNS.md` | LLM hallucination indicators to self-check |
+| `references/TEMPLATES.md` | Project file templates (ledger schema, gates, style profile) |
 | `references/DOMAINS.md` | Domain-specific method categories and datasets |
-| `references/MCP_SETUP.md` | ArXiv, PubMed, Zotero MCP configuration and fallbacks |
+| `references/MCP_SETUP.md` | Literature connector configuration and fallbacks |
 | `references/QUALITY_CHECKLIST.md` | Pre-submission quality checklist |
-| `scripts/audit_manuscript.py` | Executable manuscript audit (with `scripts/tests/` fixtures) |
+| `scripts/init_review_project.py` | Project initializer (atomic, refuses existing targets) |
+| `scripts/audit_manuscript.py` | Executable manuscript audit (`scripts/mir_audit/` package) |
+| `tests/` | Fixture test suite locking the audit and initializer contracts |
 
 ---
 
@@ -202,6 +199,8 @@ Prereqs: **Python 3.11+, Node 18+.** For Chinese decks on Linux: `sudo apt-get i
 ### Known limitation
 
 Figure localization is layout-dependent — ~95–100% on single-column / arXiv / Nature-style papers, ~75% on dense IEEE/TPAMI two-column pages. Low-confidence crops are **flagged for you to confirm**, never silently wrong. Stress-tested over 9 cross-layout papers: 0 crashes, 98% of figures localized. See [scholar-slides/README.md](./scholar-slides/README.md) for the full story.
+
+Design rationale and the 6-repo landscape survey behind this skill live in [docs/scholar-slides-design/](./docs/scholar-slides-design/).
 
 ---
 

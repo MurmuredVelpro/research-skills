@@ -9,12 +9,24 @@ Guide for gathering relevant literature during research proposal generation.
 Three source roles, combined:
 
 - **WebSearch** — trends, news, reviews, terminology, and who works on the topic.
-- **Open access via WebFetch** — arXiv, PubMed/PMC, bioRxiv/medRxiv, SSRN, Google Scholar: primary papers and metadata you can open and confirm.
+- **Open access via WebFetch** — arXiv, PubMed/PMC, bioRxiv/medRxiv, SSRN: primary papers and metadata you can open and confirm.
 - **Zotero MCP** — the user's own library: full-text papers, annotations, notes, organized references (best path for closed-access journals).
 
 All three feed a single verified candidate pool, which is then synthesized into proposal sections.
 
 **Tool portability & verification.** Confirm which tools are connected before using tool-specific names. If a Zotero/arXiv/PubMed MCP is unavailable, fall back to `WebSearch` + `WebFetch`. Every candidate must pass the existence/author/year checks in [CITATION_INTEGRITY.md](CITATION_INTEGRITY.md) *before* it is eligible to be cited — verify at collection time, not at the end.
+
+## When to escalate to the lit-search skill
+
+This workflow targets a **directed pool of ~25–50 verified sources** — the right scale for a proposal's argument. It is the wrong tool when the task requires an **exhaustive, defensible corpus**: a 开题报告 whose literature coverage must survive a committee asking "what did you miss", a systematic review / SLR, or any retrieval whose recall boundary must be stated in writing.
+
+In those cases, run the **lit-search** skill first (same repository) and consume its outputs instead of re-searching here:
+
+- `dois.md` / `references.bib` — the verified inclusion set, already deduplicated across sources;
+- `tier_report.md` / `ranked.csv` — metadata-quality annotation for prioritizing reads;
+- its PRISMA-style counts — cite-able evidence for coverage claims in the proposal.
+
+Then this workflow's remaining job narrows to Zotero enrichment (closed-access full texts, annotations) and argument-driven selection from that corpus. Do not duplicate lit-search's multi-source retrieval with ad-hoc `WebSearch` loops — that is exactly the "top-N relevant results, irreproducible, can't-say-what-was-missed" pattern lit-search exists to replace.
 
 ---
 
@@ -509,7 +521,7 @@ Solutions:
 ```
 Solutions:
 1. Prioritize by citation count
-2. Filter by publication venue quality
+2. Annotate by publication venue and metadata quality, then prioritize — but do NOT delete on that basis (annotate, don't filter: what looks "low-quality" may simply lack metrics; see lit-search's rule)
 3. Focus on most recent within each category
-4. Limit to papers directly supporting claims
+4. Limit to papers directly supporting claims — and record which selection criteria were applied, so the cut is defensible
 ```

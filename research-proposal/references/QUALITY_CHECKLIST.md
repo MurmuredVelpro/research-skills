@@ -7,12 +7,11 @@ Use this checklist to verify the quality of generated research proposals.
 ## Structure Verification
 
 ### Overall Document
-- [ ] Title is concise (10-15 words) and informative
+- [ ] Title is concise (10-15 words / 中文 15-25 字) and informative
 - [ ] All required sections present
 - [ ] Sections in logical order
-- [ ] Word counts within specified ranges
+- [ ] Word counts within specified ranges (英文 `wc -w`；中文 `wc -m`，粘贴读数为证)
 - [ ] Consistent formatting throughout
-- [ ] Page numbers included (if applicable)
 
 ### Section Completeness
 
@@ -121,6 +120,7 @@ Use this checklist to verify the quality of generated research proposals.
 - [ ] No point-by-point enumeration of ideas that should be narrated
 - [ ] Smooth transitions between ideas within paragraphs
 - [ ] **No appendix sections** - all content in main body
+- [ ] **No LLM tells** — the Phase 5 AI-tell grep (SKILL.md) returns 0 hits: no "Over the past decade/years…" openings, no "随着…的发展/近年来…日益受到关注" (中文), no "It is worth noting / pivotal role / delves into / a testament to"
 
 ### Language and Tone
 - [ ] Formal academic register
@@ -225,12 +225,9 @@ Use this checklist to verify the quality of generated research proposals.
 ## Language-Specific Checks
 
 ### English Proposals
-- [ ] British/American English consistent
-- [ ] Grammar correct
-- [ ] Spelling accurate
-- [ ] Punctuation proper
-- [ ] Articles (a/an/the) used correctly
-- [ ] Subject-verb agreement
+- [ ] British/American English consistent (`grep -nEi "colou?r|analys[ei]s|behavio?r"` shows one variant only)
+- [ ] Grammar/spelling run through a checker if available; otherwise the draft is explicitly flagged for human proofreading — "grammar correct" cannot be self-certified by the writer
+- [ ] Articles (a/an/the) and subject-verb agreement spot-checked in the sections you revised last (recency bias: latest edits hide the most errors)
 
 ### Chinese Proposals (中文)
 - [ ] 学术语体规范
@@ -263,39 +260,43 @@ Use this checklist to verify the quality of generated research proposals.
 - [ ] Jargon explained or minimized
 - [ ] Logical progression
 - [ ] Key points emphasized
-- [ ] Conclusion satisfying
+- [ ] Every major section's final paragraph links back to a research question or bridges to the next section (checkable per section, not a vague "satisfying")
 
 ### Professionalism
-- [ ] Free of typos
+- [ ] Typo pass done: spellchecker if available, plus `grep` for doubled words (`grep -nE '\b(\w+) \1\b'`) and stray CJK punctuation in English text
 - [ ] Consistent formatting
 - [ ] Appropriate length
 - [ ] Citations complete
-- [ ] Ready for submission
+- [ ] All gates above pass and any residual known limitations are disclosed to the user in the delivery message (this checklist has no "ready for submission" self-certification — readiness is the conjunction of the gates, nothing more)
 
 ---
 
 ## Scoring Guide
 
-### Rating Scale
-- **Excellent (5)**: Meets all criteria, publication-ready quality
-- **Good (4)**: Minor improvements needed
-- **Satisfactory (3)**: Several areas need attention
-- **Needs Work (2)**: Major revisions required
-- **Inadequate (1)**: Fundamental issues present
+Score each weighted dimension on the anchors below. An unanchored 1-5 is a noise generator — the anchors define what a 3 vs a 4 actually means, and a score without anchor evidence is invalid.
 
-### Section Weights
+### Rating Scale (anchored, per dimension)
+- **5 (Excellent)**: A domain expert reading only this section would not reorder, delete, or caveat anything; every claim carries verified evidence; zero gate violations.
+- **4 (Good)**: At most one paragraph needs reweighting or one claim needs a stronger source; all mechanical gates pass.
+- **3 (Satisfactory)**: The section does its job but a supervisor would return it with specific line comments (e.g. two unsupported claims, one list that should be prose); all mechanical gates still pass.
+- **2 (Needs Work)**: Structural problem — e.g. methodology doesn't match the questions, literature is summary-not-synthesis, or any mechanical gate fails.
+- **1 (Inadequate)**: Missing, boilerplate, or fabricated content; or the citation gate fails (any unverified/unreconciled reference caps the whole proposal at 1 regardless of other strengths).
+
+### Section Weights (sum = 100%)
 
 | Section | Weight |
 |---------|--------|
 | Research Questions | 15% |
-| Literature Review | 20% |
+| Literature Review | 15% |
 | Methodology | 25% |
-| Academic Writing | 20% |
+| Academic Writing | 15% |
 | Overall Coherence | 10% |
 | Technical Accuracy | 10% |
+| Significance & original contribution | 5% |
+| Abstract & title fidelity | 5% |
 
 ### Minimum Standards
-- No section rated below 3
+- No dimension rated below 3, each with the anchor evidence named
 - Overall weighted average ≥ 3.5
 - **Zero unverified or fabricated references** (CITATION_INTEGRITY.md gate passed)
 - No critical errors in citations or methodology
@@ -329,3 +330,5 @@ Use this checklist to verify the quality of generated research proposals.
 13. **Padded bibliography** (references added to hit a number, not to support a claim)
 14. **Missing figure suggestions**
 15. **Appendix included** (should not have appendix)
+16. **LLM-tell openings** ("Over the past decade…", "In recent years,", 近年来/随着…的发展 套话开场) — grep-gated in Phase 5; also banned in every reference and scaffold
+17. **中文两制混排** (正文"（作者，年份）" + 文末编号文献表) — GB/T 7714 顺序编码制 must be used end-to-end in 中文 output

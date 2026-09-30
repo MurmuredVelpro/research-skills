@@ -99,10 +99,11 @@ Establish context, articulate the problem, and present research objectives.
 - Why this area matters (societal, scientific, economic importance)
 
 **Opening Sentence Strategies:**
-- Historical perspective: "Over the past two decades, [field] has undergone..."
-- Current state: "Recent advances in [area] have transformed..."
-- Problem framing: "[Issue] affects millions of people worldwide..."
-- Statistical hook: "According to recent data, [statistic]..."
+Open on the concrete, not the generic. Ground the first sentence in a specific fact, dataset, method, or tension from the actual field — never in scene-setting boilerplate ("Over the past decade, X has emerged…", "Recent advances have transformed…" are banned LLM tells; see SKILL.md Core Principles):
+- Concrete anchor: "[Specific method/dataset] remains the standard for [task], yet [specific shortcoming] limits its use in [setting]."
+- Tension framing: "[Field] currently trades [A] against [B]; this project asks whether that trade-off is necessary."
+- Problem framing with evidence: "[Issue] affects [specific, sourced population/number]…"
+- Statistical hook (verified): cite a specific, checked statistic from a Phase 2 verified source — never "according to recent data" filler.
 
 #### 1.2 Problem Statement (150-200 words)
 - Identify the specific problem or gap

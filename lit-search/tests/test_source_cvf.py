@@ -254,6 +254,27 @@ class TestFetch:
         assert [item.title.split(":")[0] for item in records] == ["MAPSeg"]
         assert any("500" in note for note in source.skipped)
 
+    async def test_a_broken_paper_page_surfaces_in_the_outcome_not_just_memory(
+        self, respx_mock, context
+    ):
+        """留痕必须到达采集结局，而不是只留在随进程消失的内存列表里。
+
+        单篇失败 = 该检索式的召回不再完整：经 collect 的结局必须是 partial 且
+        error 里点名失败的 URL——degraded_sources 报警与续跑重试都依赖这一点。
+        """
+        self._mock_listing(respx_mock)
+        respx_mock.get(PAPER).mock(return_value=httpx.Response(500, text="boom"))
+        self._mock_others(respx_mock)
+        source = CvfSource()
+
+        outcome = await collect(source, query(), context)
+
+        assert outcome.status == "partial"
+        assert outcome.records  # 整届没有作废：其余论文照常入库
+        assert PAPER in outcome.error
+        assert "1 篇单篇获取失败" in outcome.error
+        assert source.skipped == []  # 已被 collect 取走，不会算到下一条检索式头上
+
     async def test_listing_failure_is_a_real_failure(self, respx_mock, context):
         respx_mock.get(LISTING_URL).mock(return_value=httpx.Response(500, text="boom"))
 

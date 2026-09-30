@@ -120,21 +120,78 @@ function parseArgs(): Args {
   return { figure, title, caption, output, width, height, font };
 }
 
-function wrapText(ctx: any, text: string, maxWidth: number): string[] {
-  const words = text.split(" ");
+export function isCjkChar(ch: string): boolean {
+  const code = ch.codePointAt(0) ?? 0;
+  return (
+    (code >= 0x3000 && code <= 0x9fff) || // CJK symbols, kana, unified ideographs
+    (code >= 0xf900 && code <= 0xfaff) || // compatibility ideographs
+    (code >= 0xff00 && code <= 0xffef) // fullwidth forms
+  );
+}
+
+/**
+ * Split text into wrappable tokens: Latin words stay whole; every CJK character
+ * is its own token (CJK has no spaces — splitting on " " alone leaves an entire
+ * Chinese title as ONE token no line width can break, so it rendered as a
+ * single line overflowing the canvas).
+ */
+export function tokenizeText(text: string): string[] {
+  const tokens: string[] = [];
+  let word = "";
+  for (const ch of text) {
+    if (/\s/.test(ch)) {
+      if (word) {
+        tokens.push(word);
+        word = "";
+      }
+      continue;
+    }
+    if (isCjkChar(ch)) {
+      if (word) {
+        tokens.push(word);
+        word = "";
+      }
+      tokens.push(ch);
+    } else {
+      word += ch;
+    }
+  }
+  if (word) tokens.push(word);
+  return tokens;
+}
+
+export function wrapText(ctx: any, text: string, maxWidth: number): string[] {
   const lines: string[] = [];
   let currentLine = "";
 
-  for (const word of words) {
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
-    const metrics = ctx.measureText(testLine);
+  for (const token of tokenizeText(text)) {
+    const needsSpace =
+      currentLine !== "" &&
+      !isCjkChar(currentLine[currentLine.length - 1]) &&
+      !isCjkChar(token[0]);
+    const candidate = currentLine ? currentLine + (needsSpace ? " " : "") + token : token;
 
-    if (metrics.width > maxWidth && currentLine) {
-      lines.push(currentLine);
-      currentLine = word;
-    } else {
-      currentLine = testLine;
+    if (ctx.measureText(candidate).width <= maxWidth) {
+      currentLine = candidate;
+      continue;
     }
+    if (currentLine) {
+      lines.push(currentLine);
+      currentLine = "";
+    }
+    // The token alone may still exceed maxWidth (an unbreakable long word, or a
+    // tiny canvas): hard-break it by character rather than overflow the canvas.
+    let chunk = "";
+    for (const ch of token) {
+      const testChunk = chunk + ch;
+      if (chunk && ctx.measureText(testChunk).width > maxWidth) {
+        lines.push(chunk);
+        chunk = ch;
+      } else {
+        chunk = testChunk;
+      }
+    }
+    currentLine = chunk;
   }
 
   if (currentLine) {
@@ -215,11 +272,34 @@ async function applyTemplate(args: Args) {
 
   // Calculate figure area
   const titleBottomY = titleStartY + titleLines.length * titleLineHeight + padding * 2;
-  const captionY = height - Math.round(LAYOUT.marginBottom * scaleFactor);
-  const figureAreaHeight = captionY - titleBottomY - padding * 2;
+
+  // Caption: measure FIRST so a multi-line block is clamped inside the canvas —
+  // it used to grow downward from a fixed Y and lines 4+ silently ran off the
+  // bottom edge. The figure area is then computed against the clamped block.
+  ctx.font = `italic ${captionFontSize}px ${font}`;
+  const captionMaxWidth = width * 0.85;
+  const captionLines = wrapText(ctx, caption, captionMaxWidth);
+  const captionLineHeight = captionFontSize * 1.4;
+  const captionRestY = height - Math.round(LAYOUT.marginBottom * scaleFactor);
+  const captionClampY = height - padding - (captionLines.length - 1) * captionLineHeight;
+  const captionY = Math.min(captionRestY, captionClampY);
+  if (captionY < captionRestY) {
+    console.warn(
+      `Warning: caption wraps to ${captionLines.length} lines and was clamped upward to fit the canvas — consider shortening it.`
+    );
+  }
+
+  const captionTopY = captionY - captionLineHeight / 2 - padding;
+  const figureAreaHeight = captionTopY - titleBottomY - padding * 2;
+  if (figureAreaHeight <= 0) {
+    console.warn(
+      `Warning: title (${titleLines.length} lines) + caption (${captionLines.length} lines) leave no room for the figure at ${width}x${height}.`
+    );
+  }
+  const usableFigureHeight = Math.max(figureAreaHeight, 1);
 
   const maxFigureWidth = width * LAYOUT.figureMaxWidthRatio;
-  const maxFigureHeight = Math.min(height * LAYOUT.figureMaxHeightRatio, figureAreaHeight);
+  const maxFigureHeight = Math.min(height * LAYOUT.figureMaxHeightRatio, usableFigureHeight);
 
   // Calculate scaled figure dimensions
   const figureAspect = figureImage.width / figureImage.height;
@@ -238,7 +318,7 @@ async function applyTemplate(args: Args) {
 
   // Center figure horizontally and vertically in available space
   const figureX = (width - scaledWidth) / 2;
-  const figureY = titleBottomY + (figureAreaHeight - scaledHeight) / 2;
+  const figureY = titleBottomY + (usableFigureHeight - scaledHeight) / 2;
 
   // Draw figure container with shadow and border
   const containerX = figureX - padding;
@@ -266,15 +346,11 @@ async function applyTemplate(args: Args) {
   // Draw figure
   ctx.drawImage(figureImage, figureX, figureY, scaledWidth, scaledHeight);
 
-  // Draw caption
+  // Draw caption (lines were measured and clamped before the figure was laid out)
   ctx.fillStyle = COLORS.captionText;
   ctx.font = `italic ${captionFontSize}px ${font}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-
-  const captionMaxWidth = width * 0.85;
-  const captionLines = wrapText(ctx, caption, captionMaxWidth);
-  const captionLineHeight = captionFontSize * 1.4;
 
   captionLines.forEach((line, index) => {
     ctx.fillText(line, width / 2, captionY + index * captionLineHeight);
@@ -307,4 +383,8 @@ async function main() {
   }
 }
 
-main();
+// Run only when executed directly (bun sets import.meta.main); tests import the
+// module for wrapText/tokenizeText without triggering CLI side effects.
+if ((import.meta as any).main) {
+  main();
+}

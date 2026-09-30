@@ -1,0 +1,83 @@
+# CI for research-skills: run every skill's test suite on push/PR.
+# Each suite runs in its own job so a failure in one skill's toolchain
+# doesn't mask another's results.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lit-search:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lit-search
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+      - name: Test
+        run: |
+          uv run pytest -q
+          uv run ruff check .
+
+  scholar-slides-python:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scholar-slides
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: scholar-slides/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -p no:warnings -q
+
+  scholar-slides-node:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scholar-slides
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - run: node --test tests/*.test.mjs
+
+  medical-imaging-review:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: medical-imaging-review
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest
+      - run: python -m pytest tests/ -q
+
+  paper-slide-deck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: paper-slide-deck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest pillow
+      - run: python -m pytest tests/ -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24" # native TS type-stripping for importing the .ts source in tests
+      - run: node --test tests/apply-template.test.mjs

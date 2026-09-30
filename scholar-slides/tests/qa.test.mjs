@@ -61,6 +61,18 @@ test("groundNumbers matches a decimal split across a line break in the source", 
   assert.ok(!flagged.includes("6.3"), "6.3 split as 6.\\n3 should still ground");
 });
 
+test("groundNumbers does not ground a token embedded in a longer number", () => {
+  // The parity verifier fixed this exact bug class with boundary matching ("59" satisfied "5"
+  // and "9"); the anti-fabrication core must not let "1.5" ground on "11.5" or "34" on "134".
+  const source = "baseline reaches 11.5 BLEU over 134 patients, with AUC 0.851 and 1.55M params.";
+  const deck = { slides: [{ layout: "bullets", points: ["1.5 BLEU", "34 patients", "AUC 0.85", "1.5M params"] }] };
+  const flagged = groundNumbers(deck, source).map((f) => f.value);
+  assert.ok(flagged.includes("1.5"), "'1.5' inside '11.5' must not ground");
+  assert.ok(flagged.includes("34"), "'34' inside '134' must not ground");
+  assert.ok(flagged.includes("0.85"), "'0.85' vs source '0.851' is truncation drift, must be flagged");
+  assert.ok(!flagged.includes("11.5") && !flagged.includes("134"), "exact source values must still ground");
+});
+
 test("layoutMix reports bullet ratio and the longest same-layout run", () => {
   const deck = { slides: [
     { layout: "paper-title" },

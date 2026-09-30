@@ -765,6 +765,44 @@ class TestDeliverablesAreTracked:
         verified = runner.invoke(app, ["verify", "t", "--runs-root", str(runs_root), "--strict"])
         assert verified.exit_code == 0, verified.output
 
+    def test_deliver_cache_is_not_reused_when_the_set_changes_but_not_the_count(
+        self, seeded_run, runs_root
+    ):
+        """缓存复用必须比对纳入集，不能只比条数。
+
+        实测缺陷形态：裁定翻转一进一出（或语料换血）后条数不变而集合已变，
+        按条数复用会把上一轮的纳入集渲染进 dois.md，且随后以当前输入哈希
+        重新登记，lit verify 也发现不了。
+        """
+        first = runner.invoke(
+            app, ["deliver", "t", "--runs-root", str(runs_root), "--all", "--no-citations"]
+        )
+        assert first.exit_code == 0, first.output
+
+        corpus_path = seeded_run.root / "corpus.jsonl"
+        rows = [json.loads(line) for line in corpus_path.read_text(encoding="utf-8").splitlines()]
+        swap = next(
+            row
+            for row in rows
+            if row["window_status"] == "in_window" and row.get("identifiers", {}).get("doi")
+        )
+        old_doi = swap["identifiers"]["doi"]
+        swap["key"] = f"{swap['key']}-swapped"
+        swap["identifiers"] = {**swap["identifiers"], "doi": "10.9999/swapped-entry"}
+        corpus_path.write_text(
+            "\n".join(json.dumps(row, ensure_ascii=False) for row in rows) + "\n", encoding="utf-8"
+        )
+
+        second = runner.invoke(
+            app, ["deliver", "t", "--runs-root", str(runs_root), "--all", "--no-citations"]
+        )
+
+        assert second.exit_code == 0, second.output
+        assert "不一致" in second.output, "集合已变必须显式警告，而不是静默复用"
+        dois = (seeded_run.root / "dois.md").read_text(encoding="utf-8")
+        assert "10.9999/swapped-entry" in dois, "dois.md 必须反映换血后的纳入集"
+        assert old_doi not in dois, "旧条目的 DOI 不应残留在新交付物里"
+
 
 def _write_round(run, number: int, decisions: dict, **extra) -> None:
     run.write_text(

@@ -1,6 +1,6 @@
 ---
 name: lit-search
-description: Runs an exhaustive time-windowed literature search over a research topic and delivers a quality-tiered DOI list plus a matching formatted reference list, with measurable recall (gold-set recall, PRISMA counts, citation-closure saturation). Use for systematic reviews / SLR, 开题报告, 挑战赛调研, or any "把某方向近 N 年文献检索全/理一遍/梳理一遍/查全" request. Builds the corpus — not for reading or summarizing the papers themselves, and not for writing the review text. Not for casual "find me a few papers" lookups.
+description: Runs an exhaustive time-windowed literature search over a research topic and delivers a quality-tiered DOI list plus a matching formatted reference list, with measurable recall (gold-set recall, PRISMA counts, citation-closure saturation). Use for systematic reviews / SLR, the literature-retrieval half of 开题报告 (the writing half is the research-proposal skill, which consumes this skill's dois.md / references), 挑战赛调研, or any "把某方向近 N 年文献检索全/理一遍/梳理一遍/查全" request. Builds the corpus — not for reading or summarizing the papers themselves, and not for writing the review text. Not for casual "find me a few papers" lookups.
 ---
 
 # 时间窗受限的高召回文献检索
@@ -38,7 +38,8 @@ cd "$SKILL_DIR" && uv run lit harvest --topic "$PROJ/topics/<id>.yaml" \
 
 ## 判断要不要用
 
-**用**：系统综述、开题报告、挑战赛调研——需要**说得清召回边界**的场合。
+**用**：系统综述、开题报告的文献检索部分、挑战赛调研——需要**说得清召回边界**的场合。
+（开题报告的**写作**由 research-proposal skill 负责——它消费本 skill 的 `dois.md`/`references.bib`，不要在这里写正文。）
 **不用**：用户只想快速看几篇代表作。那种情况直接 WebSearch 更快，别拖他走完整条流水线。
 
 ## 契约

@@ -1490,14 +1490,21 @@ def deliver_command(
     )
     cached = list(run_dir.read_jsonl("ranked.jsonl")) if not refresh else []
 
-    if cached and len(cached) == len(records):
+    # 复用必须比对**纳入集**（key 集合），不能只比条数：裁定一进一出后条数不变而
+    # 集合已变，按条数复用会把上一轮的纳入集渲染进 dois.md/references.md，且随后
+    # 以当前输入哈希重新登记，lit verify 也查不出来。
+    cached_keys = {row.get("key") for row in cached}
+    current_keys = {item.key for item in records}
+    if cached and cached_keys == current_keys:
         # OpenAlex 有日配额，重跑渲染不该再烧一次。
         typer.echo(f"复用 ranked.jsonl（{len(cached):,} 条）；要重取元数据加 --refresh")
         ranked = load_ranked(cached)
     else:
         if cached:
             typer.secho(
-                f"ranked.jsonl 有 {len(cached):,} 条，与本次的 {len(records):,} 条不符，重取。",
+                f"ranked.jsonl 与本次纳入集不一致"
+                f"（新增 {len(current_keys - cached_keys):,}、"
+                f"消失 {len(cached_keys - current_keys):,}），重取。",
                 fg=typer.colors.YELLOW,
             )
         matcher = _load_ccf(ccf)

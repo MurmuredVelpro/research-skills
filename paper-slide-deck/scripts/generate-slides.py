@@ -24,6 +24,9 @@ Behaviour:
     - Output extension follows the real image format returned by the model
       (Gemini often returns image/jpeg even when PNG is requested), so JPEG
       bytes are saved as .jpg — never mislabelled as .png.
+    - webp responses are converted to PNG before saving: PowerPoint and the
+      merge scripts (merge-to-pptx.ts / merge-to-pdf.ts) only accept png/jpg,
+      so a .webp on disk would be silently dropped from the final deck.
     - Idempotent: already-generated slides (any image ext, > 10 KB) are skipped.
 
 Example:
@@ -35,6 +38,7 @@ import re
 import sys
 import time
 import argparse
+import io
 from pathlib import Path
 
 DEFAULT_MODEL = "gemini-3-pro-image"
@@ -74,6 +78,37 @@ def ext_for_mime(mime_type: str) -> str:
     if not mime_type:
         return ".png"
     return MIME_TO_EXT.get(mime_type.strip().lower(), ".png")
+
+
+def convert_webp_to_png(image_data: bytes) -> bytes:
+    """Re-encode webp bytes as PNG.
+
+    PowerPoint and the merge scripts only accept png/jpg; a .webp slide on
+    disk is silently dropped from the final PPTX/PDF. Raises RuntimeError if
+    Pillow is unavailable or cannot decode the bytes.
+    """
+    try:
+        from PIL import Image
+    except ImportError as error:
+        raise RuntimeError(
+            "Gemini returned image/webp; converting it needs Pillow "
+            "(pip install Pillow)"
+        ) from error
+    with Image.open(io.BytesIO(image_data)) as image:
+        buffer = io.BytesIO()
+        image.save(buffer, format="PNG")
+        return buffer.getvalue()
+
+
+def finalize_image_data(image_data: bytes, mime_type: str) -> tuple[bytes, str]:
+    """Return (bytes, ext) to write for a response payload, converting webp.
+
+    Keeps the on-disk contract with the merge scripts: only .png / .jpg / .jpeg
+    slides exist after a successful run.
+    """
+    if (mime_type or "").strip().lower() == "image/webp":
+        return convert_webp_to_png(image_data), ".png"
+    return image_data, ext_for_mime(mime_type)
 
 
 def output_with_ext(output_base: Path, ext: str) -> Path:
@@ -134,14 +169,21 @@ def generate_slide(client, types, model: str, prompt: str, output_base: Path,
                     if hasattr(part, 'inline_data') and part.inline_data and part.inline_data.data:
                         image_data = part.inline_data.data
                         mime_type = getattr(part.inline_data, "mime_type", None)
-                        ext = ext_for_mime(mime_type)
+                        try:
+                            image_data, ext = finalize_image_data(image_data, mime_type)
+                        except RuntimeError as convert_error:
+                            print(f"  Error: {convert_error}")
+                            if attempt == max_retries - 1:
+                                return None
+                            continue
                         output_path = output_with_ext(output_base, ext)
                         # Save image (data is already bytes)
                         output_path.parent.mkdir(parents=True, exist_ok=True)
                         with open(output_path, "wb") as f:
                             f.write(image_data)
                         size_kb = len(image_data) / 1024
-                        print(f"  Saved: {output_path.name} ({size_kb:.1f} KB, {mime_type or 'image/png'})")
+                        saved_as = ext.lstrip(".").upper()
+                        print(f"  Saved: {output_path.name} ({size_kb:.1f} KB, {saved_as})")
                         return output_path
 
             print(f"  Warning: No image in response")

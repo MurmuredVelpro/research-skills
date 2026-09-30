@@ -5,12 +5,16 @@ description: >
   research plan, 研究计划书, or 开题报告 — a forward-looking plan of background,
   gap, research questions, methodology, timeline, and significance, in English or
   Chinese. Triggers: "write a research proposal", "PhD proposal", "doctoral
-  proposal", "研究计划书", "开题报告", "写博士研究计划". Not for backward-looking
-  literature reviews / 综述 / surveys (use medical-imaging-review), nor grant
-  forms bound to a funder's own template (国自然/NSF).
+  proposal", "研究计划书", "开题报告", "写博士研究计划". The literature-corpus half
+  of 开题报告 (exhaustive, reproducible retrieval with recall evidence) belongs
+  to the lit-search skill; this skill consumes its outputs (dois.md /
+  references.bib). Not for backward-looking literature reviews / 综述 / surveys
+  (use medical-imaging-review). For grant applications (国自然/NSF) it drafts and
+  structures the CONTENT (立项依据/研究内容/…) but never fills a funder's own
+  form system or budget tables.
 metadata:
   author: user
-  version: "2.0.0"
+  version: "2.0.1"
 allowed-tools:
   - WebSearch
   - WebFetch
@@ -20,6 +24,7 @@ allowed-tools:
   - AskUserQuestion
   - Glob
   - Grep
+  - Bash
   - mcp__zotero__zotero_search_items
   - mcp__zotero__zotero_get_item_metadata
   - mcp__zotero__zotero_get_item_fulltext
@@ -46,7 +51,7 @@ This skill produces the **first draft correctly**, not a template to be fixed la
 
 **Hedge to the evidence.** Use tentative language ("aims to", "may", "is expected to") for proposed work and uncertain claims; state well-established facts plainly. Do not over-claim ("will prove", "revolutionize").
 
-**Avoid the LLM tells.** These phrases are AI-detector signatures — strip them: "Over the past decade, X has emerged as…", "In recent years,", "It is worth noting that", "plays a crucial/pivotal role", "has garnered significant attention", "delves into", "a testament to". Write specific openings grounded in the actual field instead of generic scene-setting.
+**Avoid the LLM tells.** These phrases are AI-detector signatures — strip them: "Over the past decade, X has emerged as…", "In recent years,", "It is worth noting that", "plays a crucial/pivotal role", "has garnered significant attention", "delves into", "a testament to"; 中文: "近年来，随着……的飞速发展", "……日益受到广泛关注". Write specific openings grounded in the actual field instead of generic scene-setting.
 
 ## Scenario Routing
 
@@ -57,7 +62,7 @@ The default structure below targets **PhD/doctoral proposals and academic resear
 | PhD/doctoral proposal, research plan, 研究计划书 | Default structure (this skill) |
 | 开题报告 (thesis proposal / defense) | Default structure, but weight Literature Review and feasibility/existing-basis more heavily; keep methodology concrete |
 | Humanities dissertation proposal | Default + a **Chapter Outline** section (see [references/DOMAIN_TEMPLATES.md](references/DOMAIN_TEMPLATES.md)) |
-| 基金申请书 / 国自然 / NSF grant | **Different structure** (立项依据 / 研究内容与目标 / 研究方案与可行性 / 研究基础与工作条件 / 经费预算). Tell the user the default 5-section template is not a grant form; adapt headings to the funder's required template and confirm with the user before writing |
+| 基金申请书 / 国自然 / NSF grant | **Different structure** (立项依据 / 研究内容与目标 / 研究方案与可行性 / 研究基础与工作条件). This skill drafts the *content* adapted to the funder's required sections — it does **not** fill the funder's own form system, budget tables, or NSF-specific fields (Intellectual Merit / Broader Impacts). Tell the user the default 5-section template is not a grant form; adapt headings to the funder's required template and confirm with the user before writing |
 
 ---
 
@@ -143,8 +148,8 @@ Read [references/WRITING_STYLE_GUIDE.md](references/WRITING_STYLE_GUIDE.md) and 
 
 **Write-with-verify loop — repeat per section:**
 
-1. Draft the section as connected prose, placing `(Author, Year)` citations only from the Phase 2 verified pool.
-2. Immediately verify that section's citations: each in-text `(Author, Year)` has a matching References entry (Rule 3), and every directional/quantitative claim matches its source (Rule 4). See [references/CITATION_INTEGRITY.md](references/CITATION_INTEGRITY.md).
+1. Draft the section as connected prose, placing in-text citations **only from the Phase 2 verified pool**, in the chosen style: `(Author, Year)` for APA/MLA-style, numeric `[N]` for GB/T 7714 顺序编码制 (中文默认).
+2. Immediately verify that section's citations: each in-text citation has a matching References entry (Rule 3), and every directional/quantitative claim matches its source (Rule 4). See [references/CITATION_INTEGRITY.md](references/CITATION_INTEGRITY.md).
 3. Self-check against the LLM tells (Core Principles) and the hallucination red flags in CITATION_INTEGRITY.md.
 4. Fix any failure in place before starting the next section. Do not accumulate unverified citations across sections.
 
@@ -162,9 +167,10 @@ Save as `proposal_{topic_slug}_{YYYY-MM-DD}.md` in the user's working directory.
 
 Verify against [references/QUALITY_CHECKLIST.md](references/QUALITY_CHECKLIST.md). Before delivering, the **citation gate** must pass:
 
-- `grep -nE "xxx|XXXX|\[TBD\]|\[UNVERIFIED\]|10\.xxxx|\[.*占位.*\]"` returns 0 hits — or every remaining `[UNVERIFIED]` has been explicitly disclosed to the user and never presented as confirmed.
-- Every in-text `(Author, Year)` reconciles with the References list (no orphans either direction).
+- `grep -nE "xxx|XXXX|\[TBD\]|\[UNVERIFIED\]|10\.xxxx|doi:10\.[a-z]+/x|forthcoming DOI|\[.*占位.*\]"` returns 0 hits — or every remaining `[UNVERIFIED]` has been explicitly disclosed to the user and never presented as confirmed. (This regex is the single canonical version; [references/CITATION_INTEGRITY.md](references/CITATION_INTEGRITY.md) links to it rather than restating a variant.)
+- Every in-text citation reconciles with the References list (no orphans either direction).
 - At least 20% of references, and every quantitative/directional claim, spot-checked against sources.
+- **AI-tell gate**: `grep -nEi "over the past (decade|two decades)|in recent years,|it is worth noting|plays a (crucial|pivotal) role|has garnered significant attention|delves into|a testament to|近年来，?随着|日益受到(广泛)?关注"` returns 0 hits in the body (see Core Principles; the same patterns are banned in every reference file and scaffold).
 - No placeholder `[brackets]` or "TBD" left in the body — **except** applicant-specific scaffold fields the user must personalize (`[University/Institution Name]`, `[Your Field]`, `[Month Year]`) and `[Figure N Suggestion]` labels, which are intentional and may remain.
 
 Offer format conversion:
@@ -223,3 +229,5 @@ v2.0.0 was rewritten after diagnosis found the v1.0.0 skill generated many refer
 | `Task` tool declared but unused; `WebFetch` missing | Removed `Task`; added `WebFetch` |
 | Coronary-imaging examples throughout | Diluted with cross-domain examples; added computational/ML sub-template |
 | Bulleted contributions in scaffolds vs prose-first rule | Scaffolds now demonstrate prose contributions/implications |
+
+v2.0.1 hardening: the v2.0.0 "AI-tell templates removed" pass had only cleaned WRITING_STYLE_GUIDE — STRUCTURE_GUIDE, DOMAIN_TEMPLATES, and the Chinese scaffold still recommended banned openings; they are now cleaned and the AI-tell grep gate added to Phase 5. 中文 scaffold switched to GB/T 7714 顺序编码制 end-to-end with realistic character counts; `Bash` added to allowed-tools so the citation gate and pandoc conversion are actually executable; 国自然/NSF boundary stated identically in description and routing; Phase 2 now routes corpus-building to the lit-search skill instead of duplicating it.

@@ -49,6 +49,23 @@ class DocumentContractTests(unittest.TestCase):
         )
         self.assertNotRegex(skill, executable_route_row)
 
+    def test_reference_json_templates_declare_supported_schema_version(self):
+        # profile.py rejects any style_profile whose schema_version != "2.0";
+        # every JSON template embedded in the references must therefore say 2.0,
+        # or an agent following the template would produce a rejected profile.
+        fence = re.compile(r"~~~json\s*\n(.*?)~~~", re.DOTALL)
+        version = re.compile(r'"schema_version"\s*:\s*"([^"]+)"')
+        checked = 0
+        for path in sorted((ROOT / "references").glob("*.md")):
+            for match in fence.finditer(path.read_text(encoding="utf-8")):
+                found = version.search(match.group(1))
+                if not found:
+                    continue
+                checked += 1
+                with self.subTest(file=path.name, version=found.group(1)):
+                    self.assertEqual(found.group(1), "2.0")
+        self.assertGreater(checked, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

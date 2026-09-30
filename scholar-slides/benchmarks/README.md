@@ -10,6 +10,21 @@ minimal-manual-edits" goal: quality is measured on a corpus, not on the one deck
 node scripts/run_benchmark.mjs
 ```
 
+The runner does **not** build decks — it only audits what exists. On a fresh clone `out/*/deck/deck.html`
+is untracked, so every row reports `QA-ERR (deck.html missing)` and the run exits non-zero. Rebuild first:
+
+```bash
+# per deck listed in manifest.json (from the scholar-slides/ root):
+node scripts/build_deck.mjs  out/<name>/deck.json
+node scripts/render_deck.mjs out/<name>/deck/deck.html
+node scripts/export_pptx.mjs out/<name>/deck.json
+
+# full-fidelity grounding/figure legs additionally require the source PDF (not redistributable,
+# not in the repo): re-run `python scripts/prepare_source.py <pdf-or-arxiv-id> --out out/<name>`
+# to regenerate ingest.json + figure PNGs. Without it, number grounding runs at reduced fidelity
+# (no source text) and figure slides flag for review.
+```
+
 Each deck in `manifest.json` is scored on three gates and printed as one row:
 
 | gate | what it proves | tool |
@@ -30,7 +45,7 @@ regression signal. P1 (REVIEW) and P3 (nudges) are reported, not failed.
 
 ## The current set (seed)
 
-Four real decks across register and language (see `manifest.json`): a Transformer NLP deck
+Seven real decks across register and language (see `manifest.json`): a Transformer NLP deck
 (equation + real BLEU table), and the PANDA medical paper in three forms — English journal-club,
 中文 journal-club (CJK), and a conference-theme cut (0% bullets, section rhythm).
 

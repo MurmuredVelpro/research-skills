@@ -68,12 +68,21 @@ export function groundNumbers(deck, sourceText) {
     const factual = f.field.startsWith("table[") || f.layout === "results-table" || f.layout === "equation";
     for (const tok of numberTokens(f.text)) {
       if (tok.length < 2) continue; // skip lone digits (list counters, "N=6"-style single digits)
-      if (!src.includes(tok)) {
+      if (!groundedIn(src, tok)) {
         findings.push({ slide: f.slide, layout: f.layout, field: f.field, value: tok, severity: factual ? "P1" : "P2" });
       }
     }
   }
   return findings;
+}
+
+// Boundary-aware presence check mirroring verify_pptx_parity.py's contains(): a token sitting
+// inside a longer number must NOT ground — "1.5" inside "11.5", "34" inside "134" or "34.1"
+// were all silently passing under plain src.includes(tok). CJK has no word delimiters, so
+// adjacency to CJK characters is unaffected.
+function groundedIn(src, tok) {
+  const needle = tok.replace(/\./g, "\\.");
+  return new RegExp(`(?<![\\d.])${needle}(?!\\.?\\d)`).test(src);
 }
 
 // Deck-level layout composition: bullet-slide ratio + longest same-layout run. In the

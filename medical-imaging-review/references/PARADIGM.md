@@ -143,7 +143,7 @@ Only encode a check when supported by current instructions or consistent exempla
 
 ~~~json
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "profile_name": "<target-or-custom-name>",
   "source": "<instructions URL/date and exemplar citekeys>",
   "checks": {

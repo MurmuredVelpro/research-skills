@@ -4,10 +4,12 @@ Deep research synthesizing 6 open-source AI slide/PPT projects, and a design pro
 academic-PPT Claude skill. Produced by a 9-agent research workflow (2026-06-29).
 
 > These are **development-history documents** for the `scholar-slides` skill (design rationale,
-> landscape survey, build plan). They live in the project repo under `docs/scholar-slides-design/`
-> and are **not shipped inside the installable skill** (`scholar-slides/`) — the skill is
-> self-contained. See [`../../scholar-slides/SKILL.md`](../../scholar-slides/SKILL.md) for the
-> runtime entry point.
+> landscape survey, build plan). This directory is the canonical home; the installable skill
+> (`scholar-slides/`) **ships its own byte-identical copies** under `scholar-slides/docs/` plus
+> `scholar-slides/IMPLEMENTATION_PLAN.md`, because the skill installs by whole-directory copy
+> and its SKILL.md/README link into those copies — a self-contained install must not dangle.
+> When editing either copy, sync the other (or edit the skill copy and mirror it here).
+> See [`../../scholar-slides/SKILL.md`](../../scholar-slides/SKILL.md) for the runtime entry point.
 
 ## Documents
 1. [01-landscape-research.md](01-landscape-research.md) - cross-repo synthesis (comparison matrix, convergent patterns, divergences, best-of toolkit, collective blind spots for academic use) + per-repo deep-dive appendix.

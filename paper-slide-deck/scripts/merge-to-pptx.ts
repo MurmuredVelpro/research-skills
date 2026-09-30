@@ -10,6 +10,11 @@ interface SlideInfo {
 
 const SLIDE_PATTERN = /^(\d+)-slide-.*\.(png|jpg|jpeg)$/i;
 
+// Slide-named images in formats the deck cannot embed. pptxgenjs only accepts
+// png/jpg — without this check such files were skipped SILENTLY and the deck
+// shipped missing slides while the generator reported success.
+const SUSPECT_SLIDE_RE = /^\d+-slide-.+\.(webp|gif|tiff|bmp|avif|heic|jfif)$/i;
+
 /**
  * Dynamically load a third-party dependency, printing an actionable install
  * hint (instead of an opaque stack trace) if node_modules is missing.
@@ -35,6 +40,11 @@ function detectMimeType(buf: Buffer): string {
   }
   if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) {
     return "image/jpeg";
+  }
+  if (buf.length >= 12 && buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WEBP") {
+    console.error("Error: file contains webp bytes (RIFF/WEBP magic). PowerPoint cannot embed webp.");
+    console.error("Convert it to png (generate-slides.py does this automatically) and re-run.");
+    process.exit(1);
   }
   return "image/png";
 }
@@ -81,10 +91,17 @@ function findSlideImages(dir: string): SlideInfo[] {
 
   const seen = new Set<string>();
   const slides: SlideInfo[] = [];
+  const suspects: string[] = [];
 
   for (const { base, files } of sources) {
     for (const f of files) {
-      if (!SLIDE_PATTERN.test(f) || seen.has(f)) continue;
+      if (seen.has(f)) continue;
+      if (SUSPECT_SLIDE_RE.test(f)) {
+        suspects.push(f);
+        seen.add(f);
+        continue;
+      }
+      if (!SLIDE_PATTERN.test(f)) continue;
       seen.add(f);
       const match = f.match(SLIDE_PATTERN)!;
       const baseName = f.replace(/\.(png|jpg|jpeg)$/i, "");
@@ -96,6 +113,17 @@ function findSlideImages(dir: string): SlideInfo[] {
         promptPath: promptPath && existsSync(promptPath) ? promptPath : undefined,
       });
     }
+  }
+
+  if (suspects.length > 0) {
+    console.error(`Found ${suspects.length} slide image(s) in a format the deck cannot embed:`);
+    for (const f of suspects) {
+      console.error(`  - ${f}`);
+    }
+    console.error("PPTX only accepts .png/.jpg/.jpeg slides. Convert or re-generate them");
+    console.error("(generate-slides.py converts webp responses to PNG automatically), then re-run.");
+    console.error("Refusing to merge: these slides would otherwise be silently missing.");
+    process.exit(1);
   }
 
   slides.sort((a, b) => a.index - b.index);

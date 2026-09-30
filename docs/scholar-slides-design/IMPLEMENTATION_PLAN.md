@@ -3,9 +3,6 @@
 Academic slide-deck Claude skill. Build spec: [`03-design-proposal.md`](03-design-proposal.md).
 Research basis: [`01-landscape-research.md`](01-landscape-research.md), [`02-academic-needs.md`](02-academic-needs.md).
 
-> Development-history doc, kept in the project repo under `docs/scholar-slides-design/` — not
-> shipped inside the installable `scholar-slides/` skill.
-
 ## Locked decisions (2026-06-29)
 - **Backend:** reveal.js + KaTeX → vector PDF (Playwright). Editable PPTX & Beamer deferred.
 - **MVP deck type:** 组会 / journal club — **reading-first, high-density**. Arc: context → claims/contributions → method (deep) → results (dense, real tables) → **critical analysis / concerns / limitations** → takeaway + discussion questions.
@@ -168,7 +165,7 @@ is regressed on a multi-paper benchmark to avoid single-paper overfit.
 - `references/aesthetics-review.md`: 6-dimension scoreable rubric (hierarchy, typography, space,
   figures, color, consistency; 0–4 each; forced weakest-3 anti-inflation; run on *rendered pixels*
   with a different persona than generation). Runs after the integrity gate, never overrides it.
-- `04-panda-aesthetic-audit.md`: scored PANDA baseline (~15/24; figures dim 1.5; bullet-ratio 36%)
+- `docs/04-panda-aesthetic-audit.md`: scored PANDA baseline (~15/24; figures dim 1.5; bullet-ratio 36%)
   → ranked defect backlog mapped to milestones.
 - `assets/templates/deck-stage/tokens.css` (NEW): modular 1.25 type scale, 8pt spacing grid, line
   measure, figure-matting tokens. Wired into `build_deck.mjs` (loads before viewport-base + theme).
@@ -312,7 +309,89 @@ manifest → must reach PASS + clean parity.
   papers and record `benchmarks/eval/results-<date>.md` — no accounts here to generate competitor
   decks. Aesthetics self-scores are builder-directional, not external blind ratings.
 
-## Beyond M5 (backlog)
+## M6 — aesthetics loop becomes a gate  ✅ DONE (2026-07-09)
+Root finding of the 2026-07-09 four-axis review: the rubric was a document, not a checkpoint —
+the GLM-5 deck passed integrity QA with 4 slides below the rubric's own rework line.
+- **M6a render-review stage:** the rubric loop must write `<deckDir>/aesthetics_report.json`
+  (schema in `references/aesthetics-review.md`); `qa_report.mjs#renderReviewFindings` emits
+  P3 `aesthetics-not-run` when missing, P2 `aesthetics-rework-open` while `rework` is non-empty.
+  Benchmark dashboard gained an `aes/24` column. Worked example: `out/glm5/deck/aesthetics_report.json`
+  (mean 21.4/24; rework = 4 figure-content slides scheduled for M8).
+- **M6b deterministic geometry** (`lib/render_checks.mjs`, fed by `verify_slides.mjs` measurements):
+  `figure-text-illegible` P2 — exact projection `min_font_pt × rendered_px / bbox_pt_width < 12px`
+  (new `min_font_pt` per figure from `detect_figures.py`; DPI cancels); `figure-compressed` P2
+  fallback for metadata-less crops (≥1600px source shown < 45% native); `vertical-void` /
+  `horizontal-void` P3 on fill-the-canvas layouts (> 400px bottom gap / < 62% width reach).
+  Validated on the corpus: the exact path caught GLM-5 Fig.7 (~8.7px) and Fig.1 (~9.1px),
+  matching the human review verbatim.
+
+## M7 — layout rebalance (the review's space-dimension defects, CSS/renderer level)  ✅ DONE (2026-07-09)
+- critique-concerns → full-canvas 2×2 grid, rows centered in the body band (was: single
+  measure-capped column leaving the right half empty + last stanza crowding the footer).
+- references: < 4 entries render one column (`ol.single`, renderer-classed), body vertically
+  centered, bottom-only li margins (kills the two-column first-baseline mismatch).
+- results-table: body vertically centered (was top-hung over a 400px void); small tables
+  (rows ≤ 6 AND cols ≤ 5, renderer-classed `roomy`) step up to 30px type.
+- dead band under the title rule: title-bar margin s5→s4 + UA list margins zeroed on the grid.
+- glm5/glm5_zh critique slides gained eyebrows ("CRITICAL READING" / "批判性解读") — eyebrow was
+  already native in PPTX export + parity, only the spec lacked it.
+All existing decks improved on rebuild (deck.json untouched except the eyebrows); 6-deck
+benchmark parity-clean; 62 node + 82 py tests green.
+
+## M8 — figure levers  ✅ DONE (2026-07-09)
+Cleared the entire glm5 rework list (4 figure slides); deck mean 21.4 → **22.3/24**.
+Key discovery: 3 of the 4 "too small" figures were ar≈1.8, not banner-wide — their root cause
+was the **vertical budget** (title + caption + annotation chrome flex-squeezing the image), so
+the plan's original "width-driven CSS" alone could not fix them. The mechanism that did:
+- **M8a-1 hero mode** (`figure.hero: true`, assertion-evidence): caption folds into the source
+  footer, annotation is a spec ERROR (text → speaker_notes), chrome tightens (title-bar s2,
+  body gap s1), image cap rises to `--fig-cap-hero` 700px. glm5 #4/#7/#9 converted: Fig.7
+  projection 8.7px→12.0px, Fig.5 compression cleared, Fig.1 ~930px wide. Applied in layouts.mjs
+  (+validateSpec rule); PPTX export/parity needed NO changes (caption stays in the spec).
+- **M8a-2 true-wide sizing**: `lib/img_size.mjs` PNG-IHDR probe at build; ar ≥ 2.2 crops get
+  `class="wide" style="--fig-ar:…"` and CSS sizes them `min(cap, --fig-wide-w 1382px / ar)`.
+  ctx (`{baseDir}`) now threads buildHtml → renderSlide → renderFigure.
+- **M8b panel wiring + metadata guard**: legibility findings name available labeled panels
+  ("crop ONE via crop_figure.py"); buildFigMeta carries bbox shape + panel count; the exact
+  projection is SKIPPED when the shipped crop no longer matches the bbox aspect (>20% off —
+  manual re-crops like glm5 fig-1) and falls back to the compression heuristic.
+- **M8c native redraw rule**: "chart-like + numbers grounded in text → make_chart.py re-plot,
+  caption must say re-plot". glm5 #11: AA-index leaderboard screenshot → 2-bar chart (42→50,
+  both grounded); numbers that exist only inside a raster figure cannot be redrawn (would not
+  ground). Escalation ladder documented in figures-tables.md; `figure.hero` in slide-spec.md.
+Accepted borderline: Fig.7's 4.4pt "User message" chips sit exactly at the 12px floor — the
+remaining P2 is honest, not a bug. 72 node + 82 py green; benchmark parity-clean.
+## M8.5 — open-design craft merge  ✅ DONE (2026-07-14)
+Studied `nexu-io/open-design` (77.9k★): architecture convergent with ours (fixed framework +
+content slots, locked layout pools, mechanism-presence QA — ours measures rendered pixels, which
+is stronger). Ported the `craft/` discipline layer, four changes:
+- **Tracking token**: `--track-display: -0.02em` (tokens.css) applied to action title / cover
+  h1 / section h2 (display ≥48px untracked reads loose — the classic AI tell; caps eyebrows
+  already tracked +0.12em).
+- **`qa.emojiAudit`** → P2 `emoji-decoration` in qa_report (visual-slop tell, deterministic;
+  `\p{Extended_Pictographic}`, no false positives on math/arrows/CJK/flags).
+- **Chart discipline** (make_chart.py): `tick_rotation` — horizontal ticks ≤8 short categories
+  (rotation is the crowded-axis fallback); `should_label_bars` — every bar value labeled OUTSIDE
+  the bar up to 12 bars (+`margins(y=0.12)` headroom). Fixes the glm5/xlstm "rotated labels
+  off-register" top-defect.
+- **Rubric anchors** (aesthetics-review.md): hierarchy scale-event (title ≥1.5× body),
+  tracking floors + ≤3 sizes/slide + 3-weight system, visual cliché blocklist (emoji/gradients/
+  indigo/rounded-card-left-border/blobs/uniform padding + the 80/20 soul check), deck-level
+  pacing (density alternation beyond layoutMix). Chart rules in figures-tables.md.
+NOT ported: their DESIGN.md brand files (generated boilerplate), heavy 4-layer token schema
+(138-brand scale problem; we have 2 flavors — a flavor-only-overrides-known-tokens test is the
+useful kernel, backlog), marketing visual language (Klein blue, manifesto slides).
+
+- **M9 typography:** M9a `--measure` 65ch→~52ch (65ch ≈ 85–90 actual chars — unit ≠ count);
+  M9b CJK word-boundary title wrap (Intl.Segmenter + keep-all); M9c humanize footer source refs;
+  M9d drop the unexplained agenda first-item highlight.
+- **M9e (from open-design merge):** flavor-token contract test (a theme flavor may only override
+  tokens declared in tokens.css); optional per-slide "≤3 distinct type sizes" measurement in
+  verify_slides.
+- **M10 consistency/delivery:** unify qa_report vs benchmark finding counts; emphasisAudit on
+  built HTML (covers layout-injected color); one-command full refresh (build+render+export+parity —
+  NOTE: `export_pptx.mjs` defaults its output next to deck.json; pass `out/<d>/deck/deck.pptx`
+  explicitly); triage the attention deck's standing P1.
 - Grow the benchmark toward 15+ cross-discipline papers (M4c).
 - Apply the M3b bullet-reduction to the journal-club decks (dashboard shows them at 33%).
 - Expand the conference deck's speaker notes to fill a 12–15 min slot.

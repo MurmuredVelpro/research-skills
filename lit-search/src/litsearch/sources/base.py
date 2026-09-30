@@ -17,7 +17,7 @@ import os
 import tempfile
 import time
 from collections.abc import AsyncIterator, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -325,6 +325,10 @@ class Source(Protocol):
 
     注意：``last_total`` 由 ``fetch`` 在翻第一页时写入，因此同一个源实例的多条检索式
     必须**串行**执行（编排层正是这样做的，每个源一个实例、一个限速器）。
+
+    可选属性 ``skipped: list[str]``：fetch 期间**单篇级**失败（整页/整届仍成功）的
+    留痕通道。``collect`` 会在每条检索式结束时读取并清空它，把这些失败并入该检索式
+    的结局（status=partial + error）——不提供该属性的源不受影响。
     """
 
     name: str
@@ -370,26 +374,56 @@ async def collect(
                 truncated = True
                 break
     except SourceError as error:
-        return HarvestResult(
+        return _with_skipped(
+            source,
+            HarvestResult(
+                source=source.name,
+                query_hash=query.query_hash,
+                reported_total=(
+                    reported if reported is not None else getattr(source, "last_total", None)
+                ),
+                records=records,
+                pages_fetched=error.pages_fetched,
+                status="partial" if records else "failed",
+                error=str(error),
+            ),
+        )
+
+    return _with_skipped(
+        source,
+        HarvestResult(
             source=source.name,
             query_hash=query.query_hash,
             reported_total=(
                 reported if reported is not None else getattr(source, "last_total", None)
             ),
             records=records,
-            pages_fetched=error.pages_fetched,
-            status="partial" if records else "failed",
-            error=str(error),
-        )
+            pages_fetched=0,
+            status="complete",
+            truncated=truncated,
+        ),
+    )
 
-    return HarvestResult(
-        source=source.name,
-        query_hash=query.query_hash,
-        reported_total=(reported if reported is not None else getattr(source, "last_total", None)),
-        records=records,
-        pages_fetched=0,
-        status="complete",
-        truncated=truncated,
+
+def _with_skipped(source: Source, result: HarvestResult) -> HarvestResult:
+    """把源在 fetch 期间记下的单篇失败（如 CVF 单篇页获取失败）并入采集结局。
+
+    记录级丢失意味着这条检索式的召回**不再完整**——按 partial 显形并写进 error，
+    让 degraded_sources 报警与续跑重试都能看见，而不是只留在随进程消失的内存列表里。
+    读取后清空：同一源实例串行跑多条检索式，上一条的失败不能算到下一条头上。
+    """
+    skipped = getattr(source, "skipped", None)
+    if not isinstance(skipped, list) or not skipped:
+        return result
+    items = list(skipped)
+    skipped.clear()
+    head = "；".join(items[:3])
+    tail = f" 等 {len(items)} 篇" if len(items) > 3 else ""
+    note = f"{len(items)} 篇单篇获取失败：{head}{tail}"
+    return replace(
+        result,
+        status="partial" if result.status == "complete" else result.status,
+        error=f"{result.error}；{note}" if result.error else note,
     )
 
 
