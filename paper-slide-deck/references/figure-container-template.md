@@ -15,30 +15,33 @@ Visual specifications for applying the academic-paper style container to extract
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                           TITLE AREA                            │
-│                         (120px height)                          │
+│            first line centered on y=80, wraps as needed         │
+│                (line height = font size × 1.3)                  │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│                                                                 │
 │                       FIGURE AREA                               │
-│                    (centered, scaled)                           │
+│        centered between title bottom and caption top            │
 │                     max 85% width                               │
-│                     max 70% height                              │
-│                                                                 │
+│                     max 65% height (and never into              │
+│                     the title/caption bands)                    │
 │                                                                 │
 ├─────────────────────────────────────────────────────────────────┤
 │                         CAPTION AREA                            │
-│                          (80px height)                          │
+│    first line centered on y=1000 (HEIGHT−80); a multi-line      │
+│    block is clamped upward so the last line stays on canvas     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Dimensions (1920x1080)
 
+The authoritative source for these numbers is `scripts/apply-template.ts` (`LAYOUT` constants); this table mirrors it — keep the two in sync when editing.
+
 | Area | Position | Size |
 |------|----------|------|
-| Title | y: 40px, centered | height: 80px |
-| Figure Container | centered | max-width: 1632px (85%), max-height: 756px (70%) |
-| Caption | y: 960px, centered | height: 60px |
-| Margins | all sides | 60px |
+| Title | first line centered on y: 80px | font 48px bold, line height 62px (×1.3) |
+| Figure Container | centered in the space between title block and caption block | max-width: 1632px (85%), max-height: 702px (65%, further limited by the available area) |
+| Caption | first line centered on y: 1000px (HEIGHT−80) | font 24px italic, line height 34px (×1.4); multi-line blocks clamp upward |
+| Padding | around the figure box | 20px |
 
 ## Color Specifications (academic-paper style)
 
@@ -53,21 +56,22 @@ Visual specifications for applying the academic-paper style container to extract
 ## Typography
 
 ### Title
-- Font: Sans-serif (system default: Arial, Helvetica)
+- Font: Sans-serif (system default: Arial, Helvetica; override with `--font` for CJK, e.g. "Noto Sans CJK SC, Arial, sans-serif")
 - Size: 48px (1920w) / 96px (3840w)
 - Weight: Bold (700)
 - Color: #1E3A5F
 - Alignment: Center
-- Max lines: 2
+- Wrapping: automatic, width limit 90% — Latin words stay whole, every CJK character is a break point, and an unbreakable token wider than the line is hard-broken. **Recommend ≤ 2 lines**; each extra line pushes the figure area down.
 
 ### Caption
-- Font: Sans-serif (system default: Arial, Helvetica)
+- Font: Sans-serif (system default: Arial, Helvetica; same `--font` override)
 - Size: 24px (1920w) / 48px (3840w)
 - Weight: Normal (400)
 - Style: Italic
 - Color: #6B7280
 - Alignment: Center
 - Format: "Figure N: [Caption text]"
+- Wrapping: same CJK-aware rules, width limit 85%. A multi-line block is measured **before** the figure is laid out and clamped upward so no line runs off the bottom edge; the figure area shrinks accordingly (a warning is printed when title + caption crowd out the figure).
 
 ## Figure Area Styling
 
@@ -109,47 +113,45 @@ ctx.fillStyle = '#1E3A5F';
 ctx.font = 'bold 48px Arial, Helvetica, sans-serif';
 ctx.textAlign = 'center';
 ctx.textBaseline = 'middle';
-ctx.fillText(title, WIDTH / 2, 80);
+// wrapText breaks on Latin word boundaries and between individual CJK
+// characters — a Chinese title is NOT one unbreakable token.
+const titleLines = wrapText(ctx, title, WIDTH * 0.9);
+titleLines.forEach((line, i) => ctx.fillText(line, WIDTH / 2, 80 + i * 62));
 ```
 
 ### Figure Placement
 
 ```typescript
-// Load and scale figure
-const figure = await loadImage(figurePath);
+// Load and scale figure. The available area sits between the title block
+// bottom and the caption block top — not the whole canvas.
+const titleBottomY = 80 + titleLines.length * 62 + 2 * 20;
 const maxWidth = WIDTH * 0.85;
-const maxHeight = HEIGHT * 0.70;
+const maxHeight = Math.min(HEIGHT * 0.65, captionTopY - titleBottomY - 2 * 20);
 
 const scale = Math.min(maxWidth / figure.width, maxHeight / figure.height);
 const scaledWidth = figure.width * scale;
 const scaledHeight = figure.height * scale;
 
-// Center position
+// Centered in the available area
 const x = (WIDTH - scaledWidth) / 2;
-const y = (HEIGHT - scaledHeight) / 2;
+const y = titleBottomY + (availableHeight - scaledHeight) / 2;
 
-// Draw shadow
-ctx.shadowColor = 'rgba(0,0,0,0.1)';
-ctx.shadowBlur = 12;
-ctx.shadowOffsetY = 4;
-
-// Draw border
-ctx.strokeStyle = '#E5E7EB';
-ctx.lineWidth = 1;
-ctx.strokeRect(x - 20, y - 20, scaledWidth + 40, scaledHeight + 40);
-
-// Draw figure
-ctx.drawImage(figure, x, y, scaledWidth, scaledHeight);
+// Draw shadow + rounded border + figure (see apply-template.ts drawRoundedRect)
 ```
 
 ### Caption Rendering
 
 ```typescript
+// Lines are measured BEFORE the figure is laid out, and the block is clamped
+// so the last line stays inside the canvas (multi-line captions used to run
+// off the bottom edge).
 ctx.fillStyle = '#6B7280';
 ctx.font = 'italic 24px Arial, Helvetica, sans-serif';
 ctx.textAlign = 'center';
 ctx.textBaseline = 'middle';
-ctx.fillText(`Figure ${figureNum}: ${caption}`, WIDTH / 2, HEIGHT - 60);
+const lines = wrapText(ctx, `Figure ${figureNum}: ${caption}`, WIDTH * 0.85);
+const captionY = Math.min(HEIGHT - 80, HEIGHT - 20 - (lines.length - 1) * 34);
+lines.forEach((line, i) => ctx.fillText(line, WIDTH / 2, captionY + i * 34));
 ```
 
 ## Variants

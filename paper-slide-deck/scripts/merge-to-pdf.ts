@@ -136,7 +136,58 @@ function findSlideImages(dir: string): SlideInfo[] {
     process.exit(1);
   }
 
+  const { fatal, warnings } = validateSlideNumbers(slides);
+  for (const w of warnings) {
+    console.error(`Warning: ${w}`);
+  }
+  if (fatal.length > 0) {
+    for (const f of fatal) {
+      console.error(`Error: ${f}`);
+    }
+    console.error("Two slides share a number, so merge order is undefined. Fix the numbering and re-run.");
+    process.exit(1);
+  }
+
   return slides;
+}
+
+// Numbering sanity. Manual renumbering after add/delete (references/modification-guide.md)
+// is the most error-prone step of the workflow, and sort() alone hides its mistakes:
+// two slides sharing NN silently misorder the deck, and a gap breaks the NN<->position
+// correspondence with no signal at all.
+export function validateSlideNumbers(slides: SlideInfo[]): {
+  fatal: string[];
+  warnings: string[];
+} {
+  const fatal: string[] = [];
+  const warnings: string[] = [];
+  const byIndex = new Map<number, string[]>();
+  for (const s of slides) {
+    byIndex.set(s.index, [...(byIndex.get(s.index) || []), s.filename]);
+  }
+  for (const [index, files] of [...byIndex.entries()].sort((a, b) => a[0] - b[0])) {
+    if (files.length > 1) {
+      fatal.push(`duplicate slide number ${String(index).padStart(2, "0")}: ${files.join(", ")}`);
+    }
+  }
+  const indices = [...byIndex.keys()].sort((a, b) => a - b);
+  const lo = indices[0];
+  const hi = indices[indices.length - 1];
+  const missing: number[] = [];
+  for (let n = lo; n <= hi; n++) {
+    if (!byIndex.has(n)) missing.push(n);
+  }
+  if (missing.length > 0) {
+    warnings.push(
+      `slide number gap(s): ${missing.map((n) => String(n).padStart(2, "0")).join(", ")} ` +
+        `missing between ${String(lo).padStart(2, "0")}..${String(hi).padStart(2, "0")} — ` +
+        `renumber after deleting slides (references/modification-guide.md)`
+    );
+  }
+  if (lo > 1) {
+    warnings.push(`deck starts at ${String(lo).padStart(2, "0")}, not 01`);
+  }
+  return { fatal, warnings };
 }
 
 async function createPdf(PDFDocument: any, slides: SlideInfo[], outputPath: string) {
@@ -187,7 +238,11 @@ async function main() {
   await createPdf(PDFDocument, slides, outputPath);
 }
 
-main().catch((err) => {
-  console.error("Error:", err.message);
-  process.exit(1);
-});
+// Run only when executed directly (bun sets import.meta.main); tests import the
+// module for validateSlideNumbers without triggering CLI side effects.
+if ((import.meta as any).main) {
+  main().catch((err) => {
+    console.error("Error:", err.message);
+    process.exit(1);
+  });
+}
