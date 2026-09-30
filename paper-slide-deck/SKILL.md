@@ -75,111 +75,17 @@ a degraded mode** — do not abort:
 
 | Option | Description |
 |--------|-------------|
-| `--style <name>` | Visual style (see Style Gallery) |
+| `--style <name>` | Visual style — gallery + auto-selection rules in [references/style-selection.md](references/style-selection.md) |
 | `--audience <type>` | Target audience: beginners, intermediate, experts, executives, general |
 | `--lang <code>` | Output language (en, zh, ja, etc.) |
 | `--slides <number>` | Target slide count |
 | `--outline-only` | Generate outline only, skip image generation |
 
-## Style Gallery
-
-| Style | Description | Best For |
-|-------|-------------|----------|
-| `academic-paper` | Clean professional, precise charts | Academic-style visuals, technical handouts (for a faithful *editable* talk use scholar-slides) |
-| `blueprint` (Default) | Technical schematics, grid texture | Architecture, system design |
-| `chalkboard` | Black chalkboard, colorful chalk | Education, tutorials, classroom |
-| `notion` | SaaS dashboard, card-based layouts | Product demos, SaaS, B2B |
-| `bold-editorial` | Magazine cover, bold typography, dark | Product launches, keynotes |
-| `corporate` | Navy/gold, structured layouts | Investor decks, proposals |
-| `dark-atmospheric` | Cinematic dark mode, glowing accents | Entertainment, gaming |
-| `editorial-infographic` | Magazine explainers, flat illustrations | Tech explainers, research |
-| `fantasy-animation` | Ghibli/Disney style, hand-drawn | Educational, storytelling |
-| `intuition-machine` | Technical briefing, bilingual labels | Technical docs, academic |
-| `minimal` | Ultra-clean, maximum whitespace | Executive briefings, premium |
-| `pixel-art` | Retro 8-bit, chunky pixels | Gaming, developer talks |
-| `scientific` | Academic diagrams, precise labeling | Biology, chemistry, medical |
-| `sketch-notes` | Hand-drawn, warm & friendly | Educational, tutorials |
-| `vector-illustration` | Flat vector, retro & cute | Creative, children's content |
-| `vintage` | Aged-paper, historical styling | Historical, heritage, biography |
-| `watercolor` | Hand-painted textures, natural warmth | Lifestyle, wellness, travel |
-
-## Auto Style Selection
-
-| Content Signals | Selected Style |
-|-----------------|----------------|
-| paper, thesis, defense, conference, ieee, acm, icml, neurips, cvpr, acl, aaai, iclr | `academic-paper` |
-| tutorial, learn, education, guide, intro, beginner | `sketch-notes` |
-| classroom, teaching, school, chalkboard, blackboard | `chalkboard` |
-| architecture, system, data, analysis, technical | `blueprint` |
-| creative, children, kids, cute, illustration | `vector-illustration` |
-| briefing, bilingual, infographic, concept | `intuition-machine` |
-| executive, minimal, clean, simple, elegant | `minimal` |
-| saas, product, dashboard, metrics, productivity | `notion` |
-| investor, quarterly, business, corporate, proposal | `corporate` |
-| launch, marketing, keynote, bold, impact, magazine | `bold-editorial` |
-| entertainment, music, gaming, creative, atmospheric | `dark-atmospheric` |
-| explainer, journalism, science communication | `editorial-infographic` |
-| story, fantasy, animation, magical, whimsical | `fantasy-animation` |
-| gaming, retro, pixel, developer, nostalgia | `pixel-art` |
-| biology, chemistry, medical, pathway, scientific | `scientific` |
-| history, heritage, vintage, expedition, historical | `vintage` |
-| lifestyle, wellness, travel, artistic, natural | `watercolor` |
-| Default | `blueprint` |
-
-> **Academic-signal caution**: When the content matches `academic-paper` signals (paper/thesis/neurips/cvpr/icml/…), this skill still bakes text into an image, so **equations, result tables, and exact numbers may be garbled**. Extract real figures/tables from the source PDF (`Source: extract`) rather than letting the model redraw them, and if the deck needs faithful, editable formulas/data, tell the user to use **scholar-slides** instead.
-
-## Layout Gallery
-
-Optional layout hints for individual slides. Specify in outline's `// LAYOUT` section.
-
-### Slide-Specific Layouts
-
-| Layout | Description | Best For |
-|--------|-------------|----------|
-| `title-hero` | Large centered title + subtitle | Cover slides, section breaks |
-| `quote-callout` | Featured quote with attribution | Testimonials, key insights |
-| `key-stat` | Single large number as focal point | Impact statistics, metrics |
-| `split-screen` | Half image, half text | Feature highlights, comparisons |
-| `icon-grid` | Grid of icons with labels | Features, capabilities, benefits |
-| `two-columns` | Content in balanced columns | Paired information, dual points |
-| `three-columns` | Content in three columns | Triple comparisons, categories |
-| `image-caption` | Full-bleed image + text overlay | Visual storytelling, emotional |
-| `agenda` | Numbered list with highlights | Session overview, roadmap |
-| `bullet-list` | Structured bullet points | Simple content, lists |
-
-### Infographic-Derived Layouts
-
-| Layout | Description | Best For |
-|--------|-------------|----------|
-| `linear-progression` | Sequential flow left-to-right | Timelines, step-by-step |
-| `binary-comparison` | Side-by-side A vs B | Before/after, pros-cons |
-| `comparison-matrix` | Multi-factor grid | Feature comparisons |
-| `hierarchical-layers` | Pyramid or stacked levels | Priority, importance |
-| `hub-spoke` | Central node with radiating items | Concept maps, ecosystems |
-| `bento-grid` | Varied-size tiles | Overview, summary |
-| `funnel` | Narrowing stages | Conversion, filtering |
-| `dashboard` | Metrics with charts/numbers | KPIs, data display |
-| `venn-diagram` | Overlapping circles | Relationships, intersections |
-| `circular-flow` | Continuous cycle | Recurring processes |
-| `winding-roadmap` | Curved path with milestones | Journey, timeline |
-| `tree-branching` | Parent-child hierarchy | Org charts, taxonomies |
-| `iceberg` | Visible vs hidden layers | Surface vs depth |
-| `bridge` | Gap with connection | Problem-solution |
-
-### Academic-Specific Layouts
-
-| Layout | Description | Best For |
-|--------|-------------|----------|
-| `paper-title` | Title, authors, affiliations, venue | Conference paper cover |
-| `outline-agenda` | Numbered section list with highlights | Talk structure overview |
-| `methods-diagram` | Central architecture/pipeline diagram | Methods, system design |
-| `results-chart` | Chart area + data annotations | Quantitative results |
-| `equation-focus` | Centered equation + variable definitions | Mathematical derivations |
-| `qualitative-grid` | 2x2 or 3x2 image comparison grid | Visual results, ablations |
-| `references-list` | Numbered citation list | Key references slide |
-| `contributions` | Numbered contribution points | Contributions summary |
-
-**Usage**: Add `Layout: <name>` in slide's `// LAYOUT` section to guide visual composition.
+**Style & layout selection**: read [references/style-selection.md](references/style-selection.md)
+when picking a style (explicit or auto-selected from content signals — including the
+academic-signal caution about garbled math/numbers). Read
+[references/layout-gallery.md](references/layout-gallery.md) only when composing the
+outline's `// LAYOUT` hints (`Layout: <name>` per slide).
 
 ## Design Philosophy
 
@@ -197,12 +103,16 @@ Each session creates an independent directory named by content slug:
 
 ```
 slide-deck/{topic-slug}/
-├── source-{slug}.{ext}    # Source files (text, images, etc.)
-├── outline.md
+├── source-{slug}.{ext}    # Source files (text, images; source-paper.pdf for papers)
+├── figures.json           # Figure-detection results (academic PDFs)
+├── outline.md             # Final outline (with IMAGE_SOURCE blocks)
 ├── outline-{style}.md     # Style variant outlines
+├── extracted/             # Raw PDF page extractions (pre-template)
+├── figures/               # Extracted figure crops (pre-template)
 ├── prompts/
-│   └── 01-slide-cover.md, 02-slide-{slug}.md, ...
-├── 01-slide-cover.png, 02-slide-{slug}.png, ...
+│   └── {NN}-slide-{slug}.md, ...
+├── {NN}-slide-{slug}.png  # Final slide images in the deck ROOT — both AI-generated
+│                          #   and extracted-figure slides; ext may be .jpg
 ├── {topic-slug}.pptx
 └── {topic-slug}.pdf
 ```
@@ -301,7 +211,8 @@ If `--outline-only`, stop here.
 | 1 | **Gemini API (Recommended)** | Official Google API via Python. Requires GOOGLE_API_KEY env var. |
 | 2 | **Gemini Web (Browser-based)** | ⚠️ Uses reverse-engineered web API. No API key needed but may break. |
 
-**Based on selection:**
+If no API key is available, do **not** still recommend Option 1 — offer the degraded
+no-key path from the Setup section (`--outline-only` + extraction + prompts handoff).
 
 #### Option 1: Gemini API (Python)
 
@@ -310,54 +221,23 @@ If `--outline-only`, stop here.
    ```bash
    python3 ${SKILL_DIR}/scripts/generate-slides.py <slide-deck-dir>
    ```
-   The default model is `gemini-3-pro-image` (Nano Banana Pro, GA). Override with
-   `--model <id>` if needed. The older `gemini-3-pro-image-preview` id is deprecated.
+   The model id is stated once here: `gemini-3-pro-image` (Nano Banana Pro, GA; the
+   older `-preview` id is deprecated). Override with `--model <id>` only if needed.
 
-**Script Features**:
-- Auto-installs `google-genai` package if missing
-- Reads prompt files as `*.md` (or `*.txt`) from `prompts/`
-- **Errors out (non-zero) if no prompt files are found** — no silent "nothing to do"
-- Retry logic with exponential backoff (3 retries)
-- Sets `response_modalities=["IMAGE"]` so the model returns image parts
+**Script behavior** (details in the script docstring):
+- Auto-installs `google-genai`; **errors out (non-zero) if no prompt files are found**
+- Retries failed generations with exponential backoff (3 attempts total)
 - Skips already-generated slides (> 10KB, any image extension)
-- Writes each slide to the **deck root** (e.g. `01-slide-cover.png`), the same
-  place extracted-figure slides land — so one merge step picks up both
-- Saves with the **real** image extension (Gemini often returns JPEG even when
-  PNG is requested → saved as `.jpg`, never a mislabeled `.png`)
-- Supports custom model via `--model` flag
-
-**Troubleshooting**:
-- If server disconnection errors occur, script auto-retries
-- For persistent failures, re-run the script (it skips completed slides)
-- Check API quota if many failures occur
+- Writes each slide to the **deck root** — the same place extracted-figure slides
+  land, so one merge step picks up both
+- Saves with the **real** image extension, converting webp responses to PNG
+  (the merge scripts only accept png/jpg/jpeg)
 
 #### Option 2: Gemini Web Skill
 
-1. **Consent Check**: Read consent file at:
-   - Windows: `$APPDATA/baoyu-skills/gemini-web/consent.json`
-   - macOS: `~/Library/Application Support/baoyu-skills/gemini-web/consent.json`
-   - Linux: `~/.local/share/baoyu-skills/gemini-web/consent.json`
-
-2. **If no consent or version mismatch**, display disclaimer and ask:
-   ```
-   ⚠️ DISCLAIMER: This uses a reverse-engineered Gemini Web API (NOT official).
-   Risks: May break anytime, no support, possible account risk.
-   ```
-
-3. **For each slide**, run:
-   ```bash
-   npx -y bun ${GEMINI_WEB_SKILL_DIR}/scripts/main.ts \
-     --promptfiles prompts/01-slide-cover.md \
-     --image 01-slide-cover.png \
-     --sessionId slides-{topic-slug}-{timestamp}
-   ```
-
-   Where `GEMINI_WEB_SKILL_DIR` = path to `baoyu-danger-gemini-web` skill directory.
-
-4. **Proxy support**: If user is in restricted network, prepend:
-   ```bash
-   HTTP_PROXY=http://127.0.0.1:7890 HTTPS_PROXY=http://127.0.0.1:7890
-   ```
+Read [references/gemini-web.md](references/gemini-web.md) for the consent check,
+per-slide invocation, and proxy setup. It requires the `baoyu-danger-gemini-web`
+skill and explicit user consent to the reverse-engineered-API disclaimer.
 
 ### Step 5.5: Process IMAGE_SOURCE (Automatic Figure Extraction)
 
@@ -420,12 +300,15 @@ Then apply template using `apply-template.ts`.
 3. Generate session ID: `slides-{topic-slug}-{timestamp}`
 4. Generate each remaining slide with same session ID
 5. Report progress: "Generated X/N"
-6. Auto-retry once on generation failure
+6. Failures retry automatically (API path: 3 attempts with backoff; see Step 5)
 
 ### Step 6.5: Proofread Generated Images (Content Integrity)
 
 Text-to-image **bakes text into pixels and will garble spelling, math symbols, and
 numbers** — this is the single biggest risk of this skill. Do not ship unchecked.
+(This is this skill's instance of the repository's shared citation-integrity core:
+numbers and claims must match the source, and failures surface as visible flags —
+never silent substitutes.)
 
 **For every generated slide** (especially any with equations, tables, key numbers,
 or non-Latin text), use `Read` to open the PNG and visually check:
@@ -496,15 +379,12 @@ Requires:
 - Python 3.8+ with pip
 - `google-genai` package (auto-installed by script)
 
-Model: `gemini-3-pro-image` (default; Nano Banana Pro, GA). The older
-`gemini-3-pro-image-preview` id is deprecated — override with `--model` only if needed.
+Model id: stated once in Step 5.
 
 ### Gemini Web Skill (Option 2)
 
-Requires:
-- `baoyu-danger-gemini-web` skill installed at `.claude/skills/baoyu-danger-gemini-web`
-- Google Chrome browser with logged-in Google account
-- User consent for reverse-engineered API disclaimer
+See [references/gemini-web.md](references/gemini-web.md) — requires the
+`baoyu-danger-gemini-web` skill, Chrome with a logged-in Google account, and user consent.
 
 ### PDF Figure Extraction
 
@@ -515,37 +395,32 @@ Requires (install via `cd ${SKILL_DIR}/scripts && npm install`):
 
 ## References
 
-| File | Content |
-|------|---------|
-| `references/analysis-framework.md` | Deep content analysis for presentations |
-| `references/outline-template.md` | Outline structure and STYLE_INSTRUCTIONS format |
-| `references/modification-guide.md` | Edit, add, delete slide workflows |
+Read **only** the reference file for the stage you are in — never glob `references/`.
+
+| File | Read when |
+|------|-----------|
+| `references/analysis-framework.md` | Step 1 — deep content analysis; IMAGE_SOURCE mapping rules |
+| `references/style-selection.md` | Step 1/3 — style gallery + auto-selection (incl. academic-signal caution) |
+| `references/outline-template.md` | Step 2 — outline structure and STYLE_INSTRUCTIONS format |
+| `references/layout-gallery.md` | Step 2 — per-slide `Layout:` hints |
+| `references/base-prompt.md` | Step 4 — base prompt for image generation |
+| `references/gemini-web.md` | Step 5 Option 2 — consent, invocation, proxy |
+| `references/modification-guide.md` | Post-delivery edits — add/delete/renumber slide workflows |
 | `references/content-rules.md` | Content and style guidelines |
-| `references/base-prompt.md` | Base prompt for image generation |
-| `references/figure-container-template.md` | Visual specs for extracted figure containers |
-| `references/styles/<style>.md` | Full style specifications |
+| `references/figure-container-template.md` | Step 5.5 — visual specs for extracted figure containers |
+| `references/styles/<style>.md` | Full specification of the selected style |
 
 ## Notes
 
 ### Image Generation
 
-- **Nano Banana Pro API**: Recommended. Stable, reliable, requires API key
+- **Gemini API**: Recommended. Stable, reliable, requires API key
 - **Gemini Web**: No API key needed, but uses reverse-engineered API with account risk
 - Generation time: 10-30 seconds per slide
-- Auto-retry once on generation failure
+- Failures retry automatically (API path: 3 attempts with backoff)
 - Maintain style consistency via session ID
 
 ### Content Guidelines
 
 - Use stylized alternatives for sensitive public figures
 - Both methods use the same underlying Gemini model for image generation
-
-## Extension Support
-
-Custom styles and configurations via EXTEND.md.
-
-**Check paths** (priority order):
-1. `.paper-skills/paper-slide-deck/EXTEND.md` (project)
-2. `~/.paper-skills/paper-slide-deck/EXTEND.md` (user)
-
-If found, load before Step 1. Extension content overrides defaults.

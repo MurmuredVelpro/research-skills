@@ -107,6 +107,12 @@ Export & charts — pipeline stage 7 (export = Node; charts = Python):
 Tests: `./.venv/bin/python -m pytest` (Python) and
 `node --test tests/deck.test.mjs tests/qa.test.mjs tests/notes.test.mjs tests/pptx.test.mjs` (Node).
 
+## Learnings: read before changing pipeline behavior
+
+[`learnings/`](learnings/) holds post-incident notes with measured numbers (figure-size
+vertical budget, craft rules vs looks). Scan it before changing rendering, sizing, or QA
+behavior; append a dated note after any rework-worthy surprise.
+
 ## Build status
 The whole pipeline is implemented and validated on real papers. Not built: Beamer export,
 OCR for scanned PDFs, draft-deck ingestion; conference/答辩 deck types are authoring guidance

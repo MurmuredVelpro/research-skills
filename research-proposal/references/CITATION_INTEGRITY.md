@@ -2,7 +2,7 @@
 
 This is the most important reference file in the skill. Citation fabrication / drift is the #1 failure mode of LLM-drafted research proposals. A proposal that reaches an admissions committee, supervisor, or funding panel with a fabricated reference is not a stylistic slip — it is an **academic-integrity violation** that can end an application.
 
-This protocol adapts the discipline of the sister skill `medical-imaging-review` to the **author–year (Author, Year)** citation convention used in proposals (APA / MLA / Chicago / GB/T 7714), not the numbered `[N]` convention of review manuscripts.
+This protocol adapts the discipline of the sister skill `medical-imaging-review` to the **author–year (Author, Year)** citation convention used in proposals (APA / MLA / Chicago / GB/T 7714), not the numbered `[N]` convention of review manuscripts. Both are variants of the shared five-rule core reconciled at development time in the repository's `docs/citation-integrity-core.md` — conventions differ, the rules do not.
 
 **The governing principle: 宁可少，不可假 — better fewer references than one fake.** Reference count follows the argument, never a quota. A proposal that supports every claim with 22 verified sources is stronger than one padded to 45 with three fabrications.
 

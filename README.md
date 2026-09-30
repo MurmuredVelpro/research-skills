@@ -23,6 +23,10 @@ A collection of Claude Code skills for academic research workflows.
 > papers you already have. Running a systematic review end to end means lit-search first, then
 > medical-imaging-review over its `dois.md`.
 
+> **Shared anti-fabrication core.** All four writing/rendering skills instantiate the same
+> five-rule citation-integrity discipline; the variants are reconciled at development time in
+> [docs/citation-integrity-core.md](./docs/citation-integrity-core.md).
+
 ## Installation
 
 Copy the desired skill folder into your Claude Code skills directory:

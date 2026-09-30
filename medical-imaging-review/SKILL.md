@@ -172,6 +172,12 @@ State what is complete and what is not. Useful status labels include:
 
 Never collapse engineering completion, scientific-method completion, and human adjudication into one status.
 
+## Learnings
+
+[`learnings/`](learnings/) holds dated post-incident notes (e.g. mutually contradictory
+JSON templates surviving every gate until runtime). Scan it before changing audit rules
+or reference contracts; append a note after any rework-worthy surprise.
+
 ## Reference files
 
 | File | Read when |

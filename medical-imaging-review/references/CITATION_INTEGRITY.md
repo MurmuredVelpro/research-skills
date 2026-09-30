@@ -2,6 +2,8 @@
 
 This protocol governs **references.bib**, stable working citekeys, **claim_ledger.csv**, manuscript citations, tables, figures, and evidence-package outputs.
 
+Derived from the repository's shared five-rule citation-integrity core (`docs/citation-integrity-core.md` at development time; this copy ships self-contained), instantiated for the citekey + claim-ledger convention. Convention-specific machinery (ledger schema, split/comparator/uncertainty columns, audit exit codes) lives here, not in the core.
+
 The goal is traceability: a human verifier must be able to move from each material claim to the correct source, exact locator, dataset split, comparator, metric, uncertainty, and source role.
 
 Use five rules. A syntactically valid citation is not necessarily an evidentially valid citation.

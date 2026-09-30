@@ -3,6 +3,11 @@
 These separate a *scholarly* tool from a *marketing* tool. They are enforced by gates (the
 CKPT-3 self-review), not treated as suggestions. They apply at every stage.
 
+Citation/number rules 1-2, 4-5 below are the repository's shared citation-integrity core
+(`docs/citation-integrity-core.md` at development time; this copy ships self-contained),
+instantiated for a deck whose deliverable is slides; rules 3, 6-7 and the flag taxonomy are
+slide-specific.
+
 ## Hard rules
 1. **Never fabricate numbers.** Every statistic / metric / p-value / axis value comes from the
    source digest. Charts are data-bound to extracted values, never an image model's guess.

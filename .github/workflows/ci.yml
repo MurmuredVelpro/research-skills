@@ -80,4 +80,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24" # native TS type-stripping for importing the .ts source in tests
-      - run: node --test tests/apply-template.test.mjs
+      - run: node --test tests/*.mjs

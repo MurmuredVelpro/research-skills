@@ -212,6 +212,11 @@ Phase 1 Requirements (interactive) → Phase 2 Literature + verification gate �
 
 ---
 
+## learnings：复盘先于重写
+
+修改 references 或 scaffold 之前先扫 [`learnings/`](learnings/)——v1→v2 的重写
+诊断证明这类教训有值但从未沉淀。返工或发现自相矛盾后追加一篇，日期命名。
+
 ## Version Notes
 
 v2.0.0 was rewritten after diagnosis found the v1.0.0 skill generated many references with **zero authenticity guardrails**, a one-shot generation step, a hard "minimum 40 references" gate that incentivized padding, and internally contradictory numbers.
