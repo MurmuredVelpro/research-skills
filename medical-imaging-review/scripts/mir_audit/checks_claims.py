@@ -37,7 +37,7 @@ def claim_candidates(body_lines: list[SourceLine]) -> list[ClaimCandidate]:
             parsed_citations, _ = parse_citations([SourceLine(source.number, sentence)])
             citation_ids = tuple(dict.fromkeys(citation.identifier for citation in parsed_citations))
             prose = PAREN_NUMERIC_CITATION_RE.sub(
-                "", BRACKET_RE.sub("", sentence)
+                "", strip_brackets_keep_ci(sentence)
             ).strip(" ,;，；.!?。！？")
             sentence_metrics = set(
                 re.findall(
@@ -89,7 +89,7 @@ def claim_candidates(body_lines: list[SourceLine]) -> list[ClaimCandidate]:
                     dict.fromkeys(citation.identifier for citation in clause_citations)
                 )
                 clause_prose = PAREN_NUMERIC_CITATION_RE.sub(
-                    "", BRACKET_RE.sub("", raw_clause)
+                    "", strip_brackets_keep_ci(raw_clause)
                 ).strip(" ,;，；.!?。！？")
                 if clause_prose and signalled(clause_prose):
                     clause_candidates.append(
@@ -269,7 +269,7 @@ def scan_claim_ledger(
             "not_reported",
         }:
             return False, "directional prose lacks a verified direction"
-        prose = PAREN_NUMERIC_CITATION_RE.sub("", BRACKET_RE.sub("", claim.text)).casefold()
+        prose = PAREN_NUMERIC_CITATION_RE.sub("", strip_brackets_keep_ci(claim.text)).casefold()
         if "quantitative" in claim.kind:
             for field in (
                 "population_or_dataset",

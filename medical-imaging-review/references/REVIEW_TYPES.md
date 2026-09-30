@@ -77,9 +77,13 @@ Use the route-specific artifacts created by the initializer:
     <project_dir>/search/deduplication_log.csv
     <project_dir>/screening/screening_decisions.csv
     <project_dir>/screening/full_text_exclusions.csv
+    <project_dir>/screening/calibration_log.md
     <project_dir>/adjudication/conflict_log.csv
     <project_dir>/extraction/charting_table.csv
     <project_dir>/reporting/flow_counts.json
+    <project_dir>/reporting/PRISMA_ScR_checklist.md
+    <project_dir>/protocol_deviations.md
+    <project_dir>/EXPERT_SIGNOFF.md
     <project_dir>/AI_USE_DISCLOSURE.md
 
 Minimum methods:
@@ -122,17 +126,24 @@ Use this route for a focused, reproducible question when the included evidence w
 Use the route-specific artifacts created by the initializer:
 
     <project_dir>/protocol/PROTOCOL.md
+    <project_dir>/search/search_plan.md
     <project_dir>/search/search_log.csv
+    <project_dir>/search/deduplication_log.csv
     <project_dir>/screening/screening_decisions.csv
     <project_dir>/screening/full_text_exclusions.csv
+    <project_dir>/screening/calibration_log.md
     <project_dir>/adjudication/conflict_log.csv
     <project_dir>/extraction/study_characteristics.csv
     <project_dir>/extraction/critical_data.csv
     <project_dir>/extraction/cohort_linkage.csv
     <project_dir>/risk_of_bias/assessments.csv
+    <project_dir>/risk_of_bias/decision_rules.md
     <project_dir>/certainty/assessments.csv
     <project_dir>/reporting/flow_counts.json
+    <project_dir>/reporting/PRISMA_2020_checklist.md
     <project_dir>/human_review_gate.json
+    <project_dir>/protocol_deviations.md
+    <project_dir>/EXPERT_SIGNOFF.md
     <project_dir>/AI_USE_DISCLOSURE.md
 
 Minimum methods:

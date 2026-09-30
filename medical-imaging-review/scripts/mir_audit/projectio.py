@@ -440,6 +440,6 @@ def checklist_is_completed(path: Path) -> bool:
 
 
 def normalize_claim(text: str) -> str:
-    text = PAREN_NUMERIC_CITATION_RE.sub("", BRACKET_RE.sub("", text)).casefold()
+    text = PAREN_NUMERIC_CITATION_RE.sub("", strip_brackets_keep_ci(text)).casefold()
     text = re.sub(r"(?<!\w)@[^\s,;:.!?()]+", "", text)
     return " ".join(re.findall(r"\w+", text, flags=re.UNICODE))

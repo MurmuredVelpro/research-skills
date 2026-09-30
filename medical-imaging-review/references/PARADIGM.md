@@ -193,6 +193,7 @@ Only encode a check when supported by current instructions or consistent exempla
       "rationale": "<source>"
     }
   },
+  "vendor_names": ["<Vendor A>", "<Vendor B>"],
   "notes": "<conflicts, uncertainty, and exceptions>"
 }
 ~~~
@@ -200,6 +201,11 @@ Only encode a check when supported by current instructions or consistent exempla
 Permitted severity is warning. A journal requirement may be labeled required_by_journal in rationale, but the profile still does not become an evidence gate.
 
 If evidence is insufficient, omit the key or use unspecified/null. Do not invent a generic fallback.
+
+Two activation rules the schema alone does not show:
+
+- **`vendor_names` (top level, sibling of `checks`) is required to activate `vendor_placement`.** The check fires only when `vendor_placement.expected` is `"table"` **and** a non-empty `vendor_names` array names the vendors to police; with either piece missing the check stays `not_assessed` (silently, by design — an unnamed vendor cannot be policed).
+- **`citation_density` is reserved and never produces a finding.** The key is accepted for forward-compatibility, but the auditor currently reports `style.citation_density` as `not_assessed` regardless of its value; record the observed density in `notes` instead of expecting a check.
 
 ---
 

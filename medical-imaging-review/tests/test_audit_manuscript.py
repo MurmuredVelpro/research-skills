@@ -1000,6 +1000,47 @@ AI did not replace human decisions.
         self.assertEqual("unverified_claim", findings[0].category)
         self.assertEqual("critical", findings[0].severity)
 
+    def test_bracketed_confidence_intervals_are_compared_not_stripped(self):
+        """"0.80 [95% CI 0.70-0.88]" 的区间必须参与一致性比对。
+
+        实测缺陷：方括号剥离同时用于去引用和去脚注，也把括号内的 CI 一起抹掉——
+        区间一致性检查永远看不到文稿里的 CI，ledger 区间与文稿不一致时查不出来。
+        """
+        self.make_common()
+        sentence = "AUC improved to 0.80 in 100 patients [95% CI 0.70-0.88] [@smith2024]."
+        body = source_lines(sentence)
+        self.write("references.bib", "@article{smith2024,\n title={Example},\n doi={10.1000/example}\n}\n")
+
+        def write_row(interval: str):
+            row = self.claim_row(
+                "AUC improved to 0.80 in 100 patients [95% CI 0.70-0.88]",
+                "smith2024",
+                "doi:10.1000/example",
+            )
+            row["section"] = "preamble"
+            row.update({
+                "claim_type": "quantitative",
+                "population_or_dataset": "100 patients",
+                "metric": "AUC",
+                "estimate": "0.80",
+                "unit": "probability",
+                "uncertainty_interval": interval,
+                "direction": "higher",
+            })
+            with (self.project / "claim_ledger.csv").open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=audit.CLAIM_LEDGER_COLUMNS)
+                writer.writeheader()
+                writer.writerow(row)
+
+        write_row("0.70-0.88")
+        findings, assessed = audit.scan_claim_ledger(body, self.project)
+        self.assertTrue(assessed)
+        self.assertEqual([], findings)
+
+        write_row("0.75-0.90")
+        findings, _ = audit.scan_claim_ledger(body, self.project)
+        self.assertTrue(any("uncertainty_interval" in finding.message for finding in findings))
+
     def test_false_human_rows_are_not_silently_dropped(self):
         self.make_systematic(self.complete_gate())
         with (self.project / "screening/screening_decisions.csv").open(encoding="utf-8", newline="") as handle:

@@ -271,9 +271,15 @@ Style profiles describe a target journal or exemplar. They never define evidence
     "citation_density": {"expected": "<description|null>", "severity": "warning", "rationale": "<source>"},
     "section_order": {"expected": ["<section>"], "severity": "warning", "rationale": "<source>"}
   },
+  "vendor_names": ["<Vendor A>", "<Vendor B>"],
   "notes": "<observed conventions and exceptions>"
 }
 ~~~
+
+Two activation rules the schema alone does not show:
+
+- **`vendor_names` (top level, sibling of `checks`) is required to activate `vendor_placement`.** The check fires only when `vendor_placement.expected` is `"table"` **and** a non-empty `vendor_names` array names the vendors to police; with either piece missing the check stays `not_assessed` — an unnamed vendor cannot be policed.
+- **`citation_density` is reserved and never produces a finding.** The key is accepted for forward-compatibility, but the auditor reports `style.citation_density` as `not_assessed` regardless of its value; record the observed density in `notes` instead of expecting a check.
 
 Omit --profile when this file has not been populated from a real target. The auditor must then mark profile-dependent checks not_assessed.
 

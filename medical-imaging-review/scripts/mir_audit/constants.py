@@ -393,6 +393,24 @@ INLINE_CODE_RE = re.compile(r"`+[^`\n]*`+")
 BRACKET_RE = re.compile(r"[\[［【]([^\]］】\n]+)[\]］】]")
 
 
+CI_BRACKET_RE = re.compile(
+    r"[\[［【]\s*([^\]］】\n]*(?:\bCI\b|confidence\s+interval|置信区间)[^\]］】\n]*)[\]］】]",
+    re.IGNORECASE,
+)
+
+
+def strip_brackets_keep_ci(text: str) -> str:
+    """BRACKET_RE minus CI-bearing spans.
+
+    Bracket stripping exists to remove citations and footnote markers from prose;
+    applied blindly it also erased every bracketed confidence interval —
+    "0.80 [95% CI 0.70-0.88]" lost its bounds, so the interval-consistency check
+    could never see the manuscript's CI. CI-bearing brackets are unwrapped to
+    their inner text instead; every other bracket is still stripped.
+    """
+    return BRACKET_RE.sub("", CI_BRACKET_RE.sub(r" \1 ", str(text)))
+
+
 PAREN_NUMERIC_CITATION_RE = re.compile(
     r"(?<![\w])\((\d{1,3}(?:\s*(?:[,;，；]|[-–—])\s*\d{1,3})*)\)"
 )

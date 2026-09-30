@@ -66,6 +66,49 @@ class DocumentContractTests(unittest.TestCase):
                     self.assertEqual(found.group(1), "2.0")
         self.assertGreater(checked, 0)
 
+    def test_review_types_artifact_lists_match_the_initializer(self):
+        # "Use the route-specific artifacts created by the initializer" is only true
+        # if the lists name every route file the initializer actually writes (the
+        # scoping list was missing calibration_log/PRISMA_ScR, the systematic list
+        # was missing search_plan/deduplication_log/calibration_log/decision_rules/
+        # PRISMA_2020). Lock the two against init_review_project.project_files().
+        import importlib.util
+
+        script = ROOT / "scripts" / "init_review_project.py"
+        spec = importlib.util.spec_from_file_location("init_review_project", script)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        common_core = {
+            "review_config.yaml",
+            "REVIEW_CONTEXT.md",
+            "IMPLEMENTATION_PLAN.md",
+            "PARADIGM.md",
+            "manuscript.md",
+            "references.bib",
+            "claim_ledger.csv",
+        }
+        text = self.read("references/REVIEW_TYPES.md")
+        heading = re.compile(r"(?m)^## (.+)$")
+        artifact_line = re.compile(r"^    <project_dir>/(.+)$", re.MULTILINE)
+        heads = list(heading.finditer(text))
+        sections = {
+            heads[i].group(1).strip(): text[heads[i].end() : heads[i + 1].start() if i + 1 < len(heads) else len(text)]
+            for i in range(len(heads))
+        }
+        for route, section_title in (
+            ("scoping", "Scoping review"),
+            ("systematic", "Systematic review with qualitative synthesis"),
+        ):
+            with self.subTest(route=route):
+                documented = set(artifact_line.findall(sections[section_title]))
+                created = set(module.project_files("proj", route)) - common_core
+                self.assertEqual(
+                    created,
+                    documented,
+                    f"REVIEW_TYPES {section_title} list and initializer files disagree",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
