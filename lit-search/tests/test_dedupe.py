@@ -232,3 +232,34 @@ class TestDeduplicate:
 
     def test_empty_input(self):
         assert deduplicate([], WINDOW, PRIORITY) == []
+
+    def test_merge_evidence_survives_re_rooting(self):
+        """换根不得丢证据：union 恒并到较小下标，后续合并会换根。
+
+        实测缺陷：证据挂在根上但不随根搬迁——6 成员、4 条标识符证据 + 1 条
+        标题证据的组合只报出 2 条（doi:a、doi:b 在第二次换根时成为孤儿）。
+        合并本身正确，仅审计字段欠报，违背「合并过程可审计」的承诺。
+        """
+        title = "Multi-center stroke lesion segmentation benchmark"
+        records = [
+            make("pubmed", "111", title, pmid="111"),          # 0: pmid:111 组的较小下标
+            make("openalex", "W1", title, doi="10.1/a"),       # 1: doi:a 组的较小下标
+            make("crossref", "a", title, doi="10.1/A"),        # 2: 与 1 碰 doi:a
+            make("openalex", "W2", title, doi="10.1/b"),       # 3: doi:b 组的较小下标
+            make("crossref", "b", title, doi="10.1/B"),        # 4: 与 3 碰 doi:b
+            make("pubmed", "222", title, pmid="222"),          # 5: 与 0 碰 pmid:111？不——
+        ]
+        # 第 6 条改成与 0 相同的 pmid，形成 4 条标识符证据：
+        records[5] = make("pubmed", "222", title, pmid="111")
+
+        merged = deduplicate(records, WINDOW, PRIORITY)
+
+        assert len(merged) == 1
+        evidence = merged[0].merge_evidence
+        for expected in (
+            "identifier:doi:10.1/a",
+            "identifier:doi:10.1/b",
+            "identifier:pmid:111",
+            "title",
+        ):
+            assert expected in evidence, f"证据 {expected} 在换根后丢失：{evidence}"

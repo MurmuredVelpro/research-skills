@@ -10,6 +10,8 @@
 
 from __future__ import annotations
 
+import csv
+import io
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from enum import Enum
@@ -270,7 +272,10 @@ _ADJUDICATION_FIELDS = (
 
 
 def carry_adjudications(
-    merged: dict[str, MergedDecision], previous: dict[str, MergedDecision]
+    merged: dict[str, MergedDecision],
+    previous: dict[str, MergedDecision],
+    *,
+    allow_missing: bool = False,
 ) -> dict[str, MergedDecision]:
     """把上一轮的人工裁决盖回重新合并的结果上。
 
@@ -279,13 +284,17 @@ def carry_adjudications(
 
     人工裁决是终审：结论、理由、裁决人一律以上一轮为准；
     **本轮的通道判定照样留着**，因为"模型后来怎么看"本身是审计信息。
-    裁决过的记录若这轮不见了，说明语料变了，抛错而不是丢掉。
+    裁决过的记录若这轮不见了，说明语料变了，抛错而不是丢掉——**除非**
+    ``allow_missing``：那是 ``--limit`` 试跑，判定集是刻意截断的样本，
+    不在样本里不等于语料变了（归因错误会堵死校准步骤本身）。
     """
     carried = dict(merged)
     for key, decision in previous.items():
         if not any(getattr(decision, field) is not None for field in _ADJUDICATION_FIELDS):
             continue
         if key not in carried:
+            if allow_missing:
+                continue
             raise KeyError(
                 f"上一轮裁决过的记录 {key} 不在本轮判定里——语料变了，"
                 f"不能静默丢弃已定谳的结论"
@@ -304,20 +313,37 @@ def carry_adjudications(
 def render_human_queue(
     decisions: dict[str, MergedDecision], records: dict[str, CanonicalRecord]
 ) -> str:
-    """待人工裁定清单。每一行都说明它为什么在这里。"""
-    lines = ["record_key,decision,reviewer,reason,queue_reason,doi,channel_decisions,title"]
+    """待人工裁定清单。每一行都说明它为什么在这里。
+
+    必须走 csv 模块：reason 来自 LLM 输出，含 ASCII 引号时手工拼接的
+    "…" 会在回读（csv.DictReader）时错位断列——裁定导入正是这条路径。
+    """
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(
+        [
+            "record_key",
+            "decision",
+            "reviewer",
+            "reason",
+            "queue_reason",
+            "doi",
+            "channel_decisions",
+            "title",
+        ]
+    )
     for key, decision in decisions.items():
         if not decision.needs_human:
             continue
         record = records.get(key)
-        title = (record.title if record else "").replace('"', "'")
+        title = record.title if record else ""
         doi = record.identifiers.get("doi", "") if record else ""
         channels = "|".join(
             f"{item.decision.value}@{item.confidence:.2f}"
             for item in decision.channel_verdicts
         )
-        lines.append(f'{key},,,,"{decision.reason}",{doi},{channels},"{title}"')
-    return "\n".join(lines) + "\n"
+        writer.writerow([key, "", "", "", decision.reason, doi, channels, title])
+    return buffer.getvalue()
 
 
 def summarize(decisions: dict[str, MergedDecision]) -> dict[str, int]:

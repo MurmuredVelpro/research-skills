@@ -34,7 +34,6 @@ from litsearch.run import Run
 from litsearch.screen import (
     MergedDecision,
     ScreeningRound,
-    render_human_queue,
     summarize,
 )
 from litsearch.screen_commit import BackendResult, included_rows
@@ -256,7 +255,7 @@ def _require_profile(profile_path: Path | None, topic: Topic) -> JevProfile:
     if profile_path is None:
         typer.secho(
             "--model jev 必须同时给 --jev-profile。阈值是逐课题调出来的，"
-            f"没有通用默认值——实测同一套阈值在一个课题上把人工队列从 18.3% 压到 8.1%，"
+            f"没有通用默认值——实测同一套阈值在一个课题上把人工队列从 18.3% 压到 11.2%，"
             f"在另一个课题上反而比现有 LLM 更差。约定路径：topics/{topic.id}.jev.yaml",
             fg=typer.colors.RED,
             err=True,
@@ -571,10 +570,12 @@ def triage_command(
     if not candidates:
         typer.echo("\n没有可自动裁定的僵局，队列全部留给人。")
         return
-    _write_triage_round(run_dir, topic, loaded, decisions, candidates, by_key, profile)
+    _write_triage_round(
+        run_dir, topic, loaded, decisions, candidates, by_key, known, profile
+    )
 
 
-def _write_triage_round(run_dir, topic_path, loaded, decisions, candidates, by_key, profile):
+def _write_triage_round(run_dir, topic_path, loaded, decisions, candidates, by_key, known, profile):
     """把机器裁决写成新一轮。与人工裁定同构，但 adjudicated_by 记的是判定器。"""
     judge = f"jev:{profile.model}"
     try:
@@ -611,7 +612,14 @@ def _write_triage_round(run_dir, topic_path, loaded, decisions, candidates, by_k
     run_dir.write_jsonl(
         "adjudications.jsonl", [*run_dir.read_jsonl("adjudications.jsonl"), *audit]
     )
-    run_dir.write_text("human_queue.csv", render_human_queue(updated, by_key))
+    # 机器裁定后重排的仍是**分诊视图**：按分数降序、带判定器线索。曾用无序的
+    # render_human_queue 覆盖，把 `lit triage` 刚生成的核心产物（排序与线索）
+    # 在 --auto-resolve 路径上整个抹掉。被自动裁定的记录不再 needs_human，
+    # 自然从队列里消失；剩下的人仍按「漏掉代价最大」的顺序排队。
+    run_dir.write_text(
+        "human_queue.csv",
+        render_triage_queue(updated, list(by_key.values()), known, loaded, profile),
+    )
     run_dir.write_jsonl("included.jsonl", included_rows(updated, by_key))
     typer.secho(
         f"\n机器裁定 {len(candidates):,} 条 → 轮次 {written.number}"

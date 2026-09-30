@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
 import json
 import re
 import uuid
@@ -532,12 +534,28 @@ def _window_counts(canonical: list[CanonicalRecord]) -> dict[str, int]:
 
 
 def _boundary_csv(canonical: list[CanonicalRecord]) -> str:
-    """边界与无日期记录清单——这些绝不能被静默处理，必须人工裁定。"""
-    header = (
-        "record_key,current_status,decision,reviewer,reason,"
-        "canonical_date,precision,doi,title,sources,evidence"
+    """边界与无日期记录清单——这些绝不能被静默处理，必须人工裁定。
+
+    csv 模块写入：title/evidence 含 ASCII 引号或逗号时手工拼引号会在
+    csv.DictReader 回读（adjudicate --kind date 导入）时错位断列。
+    """
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(
+        [
+            "record_key",
+            "current_status",
+            "decision",
+            "reviewer",
+            "reason",
+            "canonical_date",
+            "precision",
+            "doi",
+            "title",
+            "sources",
+            "evidence",
+        ]
     )
-    lines = [header]
     for record in canonical:
         if not record.needs_human_review:
             continue
@@ -546,10 +564,19 @@ def _boundary_csv(canonical: list[CanonicalRecord]) -> str:
         evidence = " | ".join(
             f"{field}={value}" for field, value in record.dates.model_dump().items() if value
         )
-        title = record.title.replace('"', "'")
-        lines.append(
-            f"{record.key},{record.window_status.value},,,,{date_text},{precision},"
-            f'{record.identifiers.get("doi", "")},"{title}",'
-            f'{"+".join(record.sources)},"{evidence}"'
+        writer.writerow(
+            [
+                record.key,
+                record.window_status.value,
+                "",
+                "",
+                "",
+                date_text,
+                precision,
+                record.identifiers.get("doi", ""),
+                record.title,
+                "+".join(record.sources),
+                evidence,
+            ]
         )
-    return "\n".join(lines) + "\n"
+    return buffer.getvalue()

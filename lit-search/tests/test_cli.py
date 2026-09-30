@@ -1619,6 +1619,33 @@ class TestTriage:
         assert len(audit) == len(keys)
         assert all(item["reviewer"] == "jev:jev-1.13.0" for item in audit)
 
+    def test_auto_resolve_keeps_the_triage_view_of_the_queue(
+        self, queued_run, topic_path, runs_root, profile_path, jev_key, respx_mock
+    ):
+        """机器裁定后 human_queue.csv 必须仍是**分诊视图**。
+
+        实测缺陷：--auto-resolve 路径用无序的 render_human_queue 覆盖了
+        `lit triage` 刚写下的队列——按分数降序的排序和判定器线索整个丢失，
+        SKILL.md 宣传的核心产物在启用 auto-resolve 时被自己抹掉。
+        """
+        run_dir, keys = queued_run
+        respx_mock.post(JEV_URL).mock(
+            return_value=httpx.Response(200, json=_jev_reply({"I1": 0.95, "X1": 0.01}))
+        )
+
+        runner.invoke(app, self._cmd(topic_path, runs_root, profile_path, "--auto-resolve"))
+
+        text = (run_dir.root / "human_queue.csv").read_text(encoding="utf-8")
+        # 分诊表头（带判定器线索列），不是无序人工队列的表头
+        assert "jev_score" in text.splitlines()[0]
+        assert "channel_decisions" in text.splitlines()[0]
+        # 被自动裁定的记录（全部 keys 都高分纳入）不再留在待人工队列里
+        import csv as _csv
+        import io as _io
+
+        rows = list(_csv.DictReader(_io.StringIO(text)))
+        assert rows == [], "高分记录应已被机器裁定移出队列"
+
     def test_a_low_score_leaves_the_queue_to_a_human(
         self, queued_run, topic_path, runs_root, profile_path, jev_key, respx_mock
     ):

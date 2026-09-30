@@ -16,7 +16,9 @@
 
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
@@ -316,12 +318,21 @@ def estimate_jev(
     )
 
 
-#: 分诊队列的表头。前四列是 ``lit adjudicate`` 的固定契约（留空给人填），
+#: 分诊队列的列。前四列是 ``lit adjudicate`` 的固定契约（留空给人填），
 #: 判定器给出的线索紧随其后——人打开 CSV 第一眼就该看到它们。
-_TRIAGE_HEADER = (
-    "record_key,decision,reviewer,reason,"
-    "jev_score,jev_weakest,jev_exclusions,queue_reason,doi,channel_decisions,title"
-)
+_TRIAGE_COLUMNS = [
+    "record_key",
+    "decision",
+    "reviewer",
+    "reason",
+    "jev_score",
+    "jev_weakest",
+    "jev_exclusions",
+    "queue_reason",
+    "doi",
+    "channel_decisions",
+    "title",
+]
 UNSCORED = "未打分"
 
 
@@ -355,18 +366,22 @@ def render_triage_queue(
     # 无分数排最后：-1 只用于排序，不会出现在输出里。
     scored.sort(key=lambda pair: (pair[1] is not None, pair[1] or -1.0), reverse=True)
 
-    lines = [_TRIAGE_HEADER]
+    # csv 模块写入：reason 来自 LLM 输出、title 来自原始记录，含 ASCII 引号时
+    # 手工拼引号会在 csv.DictReader 回读时错位断列（adjudicate 导入正是这条路径）。
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(_TRIAGE_COLUMNS)
     for key, score in scored:
         row = rows.get(key)
         record = by_key.get(key)
-        title = (record.title if record else "").replace('"', "'")
+        title = record.title if record else ""
         doi = record.identifiers.get("doi", "") if record else ""
         channels = "|".join(
             f"{item.decision.value}@{item.confidence:.2f}"
             for item in decisions[key].channel_verdicts
         )
         if score is None or row is None:
-            cells = f"{UNSCORED},,"
+            score_text, weakest, fired = UNSCORED, "", ""
         else:
             weakest = min(inclusions, key=lambda cid: row.answers[cid])
             fired = " ".join(
@@ -374,11 +389,24 @@ def render_triage_queue(
                 for cid in exclusions
                 if row.answers.get(cid, 0.0) >= EXCLUSION_FLAG_AT
             )
-            cells = f"{score:.3f},{weakest}={row.answers[weakest]:.2f},{fired}"
-        lines.append(
-            f'{key},,,,{cells},"{decisions[key].reason}",{doi},{channels},"{title}"'
+            score_text = f"{score:.3f}"
+            weakest = f"{weakest}={row.answers[weakest]:.2f}"
+        writer.writerow(
+            [
+                key,
+                "",
+                "",
+                "",
+                score_text,
+                weakest,
+                fired,
+                decisions[key].reason,
+                doi,
+                channels,
+                title,
+            ]
         )
-    return "\n".join(lines) + "\n"
+    return buffer.getvalue()
 
 
 def tiebreak_candidates(

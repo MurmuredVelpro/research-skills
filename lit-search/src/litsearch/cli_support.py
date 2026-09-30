@@ -96,12 +96,17 @@ def load_round(run_dir: Run, number: int) -> dict[str, MergedDecision]:
 def carry_or_exit(
     decisions: dict[str, MergedDecision],
     previous: Mapping[str, MergedDecision] | None,
+    *,
+    allow_missing: bool = False,
 ) -> dict[str, MergedDecision]:
-    """把人工裁决盖回新一轮。裁决过的记录若这轮不见了，报干净的错而不是栈回溯。"""
+    """把人工裁决盖回新一轮。裁决过的记录若这轮不见了，报干净的错而不是栈回溯。
+
+    ``allow_missing`` 用于 ``--limit`` 试跑：截断样本里缺键是预期的，不是语料漂移。
+    """
     if not previous:
         return decisions
     try:
-        return carry_adjudications(decisions, previous)
+        return carry_adjudications(decisions, previous, allow_missing=allow_missing)
     except KeyError as error:
         typer.secho(str(error.args[0]), fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from error
@@ -140,7 +145,9 @@ def finish_screening_round(
     安全逻辑只此一份。复制第二份的代价是：某一天只有一条路径被修好，而两条路径
     写出的轮次看起来一模一样。
     """
-    carried = carry_or_exit(dict(result.decisions), previous)
+    # 试跑（--limit）的判定集是截断样本：裁决过的记录不在样本里是预期的，
+    # 不能按"语料变了"报错——那会堵死校准步骤本身（SKILL.md 强制要求的冒烟）。
+    carried = carry_or_exit(dict(result.decisions), previous, allow_missing=trial)
     result = replace(result, decisions=carried)
 
     # 试跑写的是 screening_trial.json，不占轮次号也遮蔽不了任何东西，无需守卫。

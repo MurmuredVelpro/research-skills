@@ -41,7 +41,7 @@ uv run lit deliver  my-topic --topic "$PROJ/topics/my-topic.yaml" --runs-root "$
 一份纯 CS（Context Engineering）。写协议是整条流水线里最需要判断力的一步，
 照着改比从模板从头填快得多。
 
-## 为什么不直接用 WebSearch / Google Scholar## 为什么不直接用 WebSearch / Google Scholar
+## 为什么不直接用 WebSearch / Google Scholar
 
 聊天式检索返回的是"相关度排序的前若干条"：不可复现，无法说明漏了什么，也无法在时间窗边界上
 保证一致。litsearch 把它变成确定性流水线：
@@ -313,8 +313,8 @@ uv run lit screen-eval <run> --topic ... --reference-round 3     --candidate-sco
 uv run lit screen <run> --topic ... --model jev --jev-profile topics/<id>.jev.yaml
 ```
 
-配置示例见 `topics/pediatric-intestinal-obstruction-ai.jev.yaml`，里面记着这个
-课题的实测数字。价目 $0.042/百万输入 token、输出免费：ISLES 全量约 $1.10，
+阈值模板见 `references/jev-profile-template.yaml`（含 pediatric 课题的实测数字与调参
+警告）；每个课题的正式协议按约定放 `topics/<id>.jev.yaml`，不进仓库。价目 $0.042/百万输入 token、输出免费：ISLES 全量约 $1.10，
 对比实测 deepseek-v4-pro 的 $9.13。
 
 ### 打分与判定分离

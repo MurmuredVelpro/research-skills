@@ -6,6 +6,9 @@
 
 from __future__ import annotations
 
+import csv
+import io
+
 import pytest
 from pydantic import ValidationError
 
@@ -246,6 +249,29 @@ class TestHumanQueue:
 
         assert "置信度" in csv
 
+    def test_reasons_with_quotes_survive_a_csv_round_trip(self):
+        """LLM 给的 reason 含 ASCII 引号时，队列 CSV 必须能被 csv.DictReader 原样读回。
+
+        实测缺陷：手工拼引号的写法让 reason 里的 `"` 把字段撕开，
+        `lit adjudicate --input` 回读时 queue_reason 变形、后续列全部错位。
+        """
+        merged = merge_verdicts(
+            [[verdict("k1", "include", confidence=0.3)], [verdict("k1", "exclude")]], CONFIG
+        )
+        merged["k1"] = merged["k1"].model_copy(
+            update={"reason": '通道分歧：一个说 "pediatric" 命中，另一个说没有'}
+        )
+        records = {"k1": record("k1", title='A "quoted" title, with comma')}
+
+        text = render_human_queue(merged, records)
+
+        rows = list(csv.DictReader(io.StringIO(text)))
+        assert len(rows) == 1
+        assert rows[0]["record_key"] == "k1"
+        assert rows[0]["queue_reason"] == '通道分歧：一个说 "pediatric" 命中，另一个说没有'
+        assert rows[0]["title"] == 'A "quoted" title, with comma'
+        assert rows[0]["decision"] == ""  # 留给人填的契约列不被污染
+
 
 class TestDecisionRendering:
     """判定值进入审计文本时必须是协议里的字面量，不是 Python 枚举的 repr。
@@ -370,3 +396,19 @@ class TestCarryAdjudications:
         """裁决过的记录这轮不见了，说明语料变了——静默丢掉比报错危险得多。"""
         with pytest.raises(KeyError):
             carry_adjudications({}, {"k1": self._adjudicated()})
+
+    def test_a_truncated_trial_sample_allows_missing_keys(self):
+        """``--limit`` 试跑的判定集是刻意截断的：缺键不是语料漂移。
+
+        实测缺陷：裁定过的 run 一做冒烟就被 KeyError 顶回来，报错文案还归因
+        「语料变了」——堵死的正是 SKILL.md 强制要求的校准步骤。
+        """
+        remerged = merge_verdicts(
+            [[verdict("k1", "exclude")], [verdict("k1", "exclude")]], CONFIG
+        )
+        previous = {"k1": self._adjudicated(), "k-not-in-sample": self._adjudicated("k-other")}
+
+        carried = carry_adjudications(remerged, previous, allow_missing=True)
+
+        assert carried["k1"].decision is Decision.INCLUDE  # 样本内的裁决照常盖回
+        assert "k-not-in-sample" not in carried  # 样本外的静默跳过，不报语料漂移

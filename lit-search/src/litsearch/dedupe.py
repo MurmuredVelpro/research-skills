@@ -265,13 +265,28 @@ def deduplicate(
     union = _UnionFind(len(items))
     evidence: dict[int, set[str]] = {index: set() for index in range(len(items))}
 
+    def _union(left: int, right: int) -> int:
+        """union 并把两侧证据搬到新根。
+
+        证据挂在根上，而 ``_UnionFind.union`` 恒并到较小下标——后续合并换根时，
+        旧根上的证据不搬走就成了孤儿（实测 6 成员组合只报出 5 条证据中的 3 条：
+        合并本身正确，仅审计字段欠报，违背「合并过程可审计」的承诺）。
+        """
+        roots = {union.find(left), union.find(right)}
+        union.union(left, right)
+        new_root = union.find(left)
+        carried = set()
+        for root in roots:
+            carried |= evidence.get(root, set())
+        evidence[new_root] = carried | evidence.get(new_root, set())
+        return new_root
+
     # 第一趟：标识符传递合并
     by_identifier: dict[str, int] = {}
     for index, record in enumerate(items):
         for key in _identifier_keys(record):
             if (seen := by_identifier.get(key)) is not None:
-                union.union(seen, index)
-                evidence[union.find(index)].add(f"identifier:{key}")
+                evidence[_union(seen, index)].add(f"identifier:{key}")
             else:
                 by_identifier[key] = index
 
@@ -286,8 +301,7 @@ def deduplicate(
                 if union.find(left_index) == union.find(right_index):
                     continue
                 if _titles_match(items[left_index], items[right_index]):
-                    union.union(left_index, right_index)
-                    evidence[union.find(left_index)].add("title")
+                    evidence[_union(left_index, right_index)].add("title")
 
     grouped: dict[int, list[int]] = {}
     for index in range(len(items)):

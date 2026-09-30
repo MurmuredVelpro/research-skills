@@ -218,7 +218,9 @@ uv run lit harvest --topic ... --into <run> --phase stage3 --sources cvf,openrev
 `Event loop is closed`（httpx 的连接池绑在创建它的事件循环上，而 respx 在传输层
 拦截、根本不建真实连接）。
 
-`--limit` 的结果写 `screening_trial.json`，**不占正式轮次**——否则一次校准会盖掉全量结果。
+`--limit` 的结果写 `screening_trial.json` 和 `human_queue_trial.csv`（判定 API 则写
+`jev_scores_trial.jsonl`），**不占正式轮次**——否则一次校准会盖掉全量结果。
+校准时打开的是这三个 `*_trial` 文件，不是 `human_queue.csv` / `jev_scores.jsonl`。
 
 > ⚠️ **`--limit N` 取的是语料前 N 条，不是随机抽样。** 前缀里几乎全是最先被采集、
 > 也最典型的记录，而撑爆人工队列的永远是后面那些边缘记录。实测一次：前缀样本
@@ -408,7 +410,9 @@ lit screen-eval <run> --topic ... --reference-round <人工裁决过的轮次> \
 | `manifest.json` | 协议指纹 + 每条检索式的结局与状态 |
 | `boundary_cases.csv` | 日期精度不足，需人工裁定 |
 | `human_queue.csv` | 双通道分歧或低置信度，需人工裁定；`lit triage` 会把它按最可能纳入重排并附上判定器线索 |
+| `screening_trial.json` / `human_queue_trial.csv` | `--limit` 试跑的轮次与队列（**校准时看这两个**，不是 `human_queue.csv`）；不占正式轮次号 |
 | `jev_scores.jsonl` | 判定 API 的逐条打分（`--model jev` / `lit triage`）。改阈值只需重新路由，不重打 |
+| `jev_scores_trial.jsonl` | `lit triage --limit` 试跑的打分；校准阈值时以它为 `--candidate-scores` 输入 |
 | `screen_eval_*.md` / `*_disagreements.csv` | `lit screen-eval` 的评估报告与分歧清单（填好可直接 `lit adjudicate`） |
 | `facets.jsonl` / `facets.csv` | `lit facets` 的标注：外部验证、多中心、公开数据集等。只有 stated/not_stated，**没有 no** |
 | `PRISMA.md` | 各环节计数（不自洽会拒绝生成） |
