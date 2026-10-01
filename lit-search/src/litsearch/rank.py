@@ -135,6 +135,9 @@ class RankedRecord:
     #: 靠匹配理由字符串来判断状态，改一句文案就会悄悄改变统计口径。
     openalex_hit: bool = False
     unmatched_reason: str | None = None
+    #: OpenAlex 标记的撤稿状态。采集了多年却没人消费——撤稿文献必须显形
+    #: 在交付物里，而不是安静地混进 DOI 清单（旧 ranked.jsonl 无此字段 → None）。
+    is_retracted: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -271,6 +274,7 @@ def rank_records(
                 in_top_10_percent=work.in_top_10_percent if work else None,
                 in_top_1_percent=work.in_top_1_percent if work else None,
                 date_text=_date_text(record),
+                is_retracted=record.is_retracted,
                 ccf_rank=entry.rank if entry else None,
                 ccf_name=(entry.abbrev or entry.full_name) if entry else None,
                 openalex_hit=work is not None,
@@ -592,6 +596,7 @@ _RANKED_FIELDS = (
     "ccf_name",
     "openalex_hit",
     "unmatched_reason",
+    "is_retracted",
 )
 
 
@@ -641,6 +646,7 @@ def ranked_csv(ranked: Sequence[RankedRecord]) -> str:
             "doi",
             "title",
             "unmatched_reason",
+            "retracted",
         ]
     )
     for item in ranked:
@@ -661,6 +667,7 @@ def ranked_csv(ranked: Sequence[RankedRecord]) -> str:
                 item.doi or "",
                 item.title,
                 item.unmatched_reason or "",
+                "Y" if item.is_retracted else "",
             ]
         )
     return buffer.getvalue()

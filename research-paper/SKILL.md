@@ -1,0 +1,142 @@
+---
+name: research-paper
+description: >
+  Use when the user asks to write or draft an ORIGINAL RESEARCH ARTICLE —
+  IMRaD paper, conference paper, short/workshop paper, 研究论文/期刊论文/会议论文 —
+  reporting their own completed experiments, in English or Chinese. Triggers:
+  "write the paper", "draft our manuscript", "把我们这篇工作写成论文", "论文写作".
+  Results-first: the user's actual results (tables, metrics, figures) are the
+  raw material; this skill never invents an experiment or a number. NOT for
+  literature reviews/surveys (use medical-imaging-review), NOT for proposals
+  (use research-proposal), NOT for grant applications.
+---
+
+# Research Paper Writer
+
+Draft an original research article from the user's **actual completed work**:
+their experiments, data, figures, and references. Two disciplines govern
+everything:
+
+1. **Results-first.** Methods and Results are written from materials the user
+   supplied (result tables, metrics dumps, figures, code notebooks). Anything
+   not supplied is flagged `[PENDING: …]` — never filled with a plausible
+   number. A fabricated result is worse than a fabricated citation: it is
+   data fraud, not a style slip.
+2. **Citation integrity** (this repository's shared five-rule core, instantiated
+   for author-year/numeric journal styles — see
+   [references/CITATION_INTEGRITY.md](references/CITATION_INTEGRITY.md)):
+   every reference verified to exist before it enters the bibliography;
+   `[UNVERIFIED]` flags for the rest; no invented DOIs, authors, or numbers.
+
+## Scenario routing
+
+| Study type | Structure | Binding checklist (Phase 1) |
+|---|---|---|
+| Imaging-AI method / model paper | IMRaD, methods-forward | CLAIM 2024 |
+| Prediction / risk model | IMRaD + model development emphasis | TRIPOD+AI |
+| Observational / cohort study | IMRaD, methods after hypotheses | STROBE |
+| (Rare here) trial, systematic review | **Out of scope** — say so and stop | CONSORT / PRISMA via the right skill |
+| CS/eng venue paper (CVPR/NeurIPS style) | Abstract → Intro → Related → Method → Experiments → Conclusion | venue's own checklist/reproducibility statement |
+
+Read [references/STRUCTURE_GUIDE.md](references/STRUCTURE_GUIDE.md) for
+section-by-section construction and [references/REPORTING_CHECKLISTS.md](references/REPORTING_CHECKLISTS.md)
+for what the binding checklist actually requires.
+
+## Phase 1: Intake (record, don't improvise)
+
+Use `AskUserQuestion` to collect:
+
+1. **Study type + target venue/journal** — routes structure and checklist (above).
+2. **Materials in hand** — result tables/CSVs, metric numbers, figures, prior
+   drafts/notes, code notebook. If the user has *no results yet*, stop: this
+   skill writes papers about completed work, not imagined work (that is
+   research-proposal territory).
+3. **References pool** — user's Zotero/bib, or run the **lit-search** skill for
+   a defensible related-work corpus (its `references.bib` drops straight in).
+4. **Language and length** — en/zh; word limit from the venue's guide.
+
+Record the intake as a short `paper_plan.md` (study type, venue, checklist,
+materials list, citation style). Headless runs: record inline and continue.
+
+## Phase 2: Materials audit (before any prose)
+
+Inventory every number that will appear in Results:
+
+- Each metric → its source artifact (file, table, cell). Untraceable numbers
+  are `[PENDING]`, and the user is told before drafting starts.
+- Each figure → real file or a `[PENDING: figure]` placeholder with a content
+  description. Redrawing/schematics follow the same honesty rules as
+  scholar-slides (label what is not data).
+- This inventory becomes `results_ledger.csv` (see
+  [references/QUALITY_CHECKLIST.md](references/QUALITY_CHECKLIST.md)) — the
+  paper-side sibling of the review skill's claim ledger: one row per
+  load-bearing number, `claim_location → source_artifact → value`.
+
+## Phase 3: Outline + approval (red line)
+
+Section skeleton per [references/STRUCTURE_GUIDE.md](references/STRUCTURE_GUIDE.md),
+with per-section bullet content mapped to Phase 2 materials. **Present the
+outline and wait for explicit approval** (same rules as research-proposal:
+"你看着办" → state assumptions, re-present, proceed).
+
+## Phase 4: Write-with-verify (per section)
+
+Draft section by section; after each section, before starting the next:
+
+1. Every citation in the section is from the verified pool (rules:
+   [references/CITATION_INTEGRITY.md](references/CITATION_INTEGRITY.md)).
+2. Every number in the section reconciles against `results_ledger.csv`.
+3. Self-check against the AI-tell list and style rules
+   ([references/WRITING_STYLE.md](references/WRITING_STYLE.md)) — the Phase 5
+   grep gates make these checkable, not aspirational.
+4. Tense/register per section (Methods: past, what was done; Results: past,
+   what was found — no interpretation; Discussion: present, what it means).
+
+## Phase 5: Gates + reporting checklist + submission pack
+
+Mechanical gates (paste command output as evidence):
+
+```bash
+# 1) Placeholder gate — zero hits (or disclosed [UNVERIFIED]/[PENDING])
+grep -nE "xxx|XXXX|\[TBD\]|\[PENDING|\[UNVERIFIED\]|10\.xxxx|doi:10\.[a-z]+/x" paper_draft.md
+
+# 2) AI-tell gate — zero hits
+grep -nEi "over the past (decade|two decades)|in recent years,|it is worth noting|plays a (crucial|pivotal) role|has garnered significant attention|delves into|a testament to|近年来，?随着|日益受到(广泛)?关注" paper_draft.md
+```
+
+Then: work through the binding reporting checklist item by item
+([references/REPORTING_CHECKLISTS.md](references/REPORTING_CHECKLISTS.md));
+assemble the submission pack — title page, abstract in the venue's format,
+keywords, cover letter, author contributions/COflicts
+([references/SUBMISSION_PACK.md](references/SUBMISSION_PACK.md)).
+
+## Reference Files
+
+Read **only** the file for the phase you are in.
+
+| File | Read when |
+|------|-----------|
+| [references/STRUCTURE_GUIDE.md](references/STRUCTURE_GUIDE.md) | Phase 3 — IMRaD construction per study type |
+| [references/CITATION_INTEGRITY.md](references/CITATION_INTEGRITY.md) | Phase 2/4 — the five rules in journal-style form |
+| [references/REPORTING_CHECKLISTS.md](references/REPORTING_CHECKLISTS.md) | Phase 1/5 — checklist selection + item-by-item pass |
+| [references/WRITING_STYLE.md](references/WRITING_STYLE.md) | Phase 4 — register, tense, cohesion, AI-tells |
+| [references/SUBMISSION_PACK.md](references/SUBMISSION_PACK.md) | Phase 5 — abstract/cover letter/reproducibility statement |
+| [references/QUALITY_CHECKLIST.md](references/QUALITY_CHECKLIST.md) | Phase 5 — final gates incl. results_ledger reconciliation |
+| [assets/paper_scaffold_en.md](assets/paper_scaffold_en.md) | Phase 4 — English skeleton |
+| [assets/paper_scaffold_zh.md](assets/paper_scaffold_zh.md) | Phase 4 — 中文骨架 |
+
+## learnings：复盘先于重写
+
+修改 references 或 scaffold 之前先扫 [`learnings/`](learnings/)；返工或发现
+自相矛盾后追加一篇，日期命名（格式见 lit-search/learnings/）。
+
+## Error handling
+
+- **No results materials** — stop and say so; suggest research-proposal if the
+  work is still planned.
+- **A claimed number can't be traced** — `[PENDING]` + explicit disclosure,
+  never a placeholder that looks real.
+- **Reference can't be verified** — `[UNVERIFIED]` + disclosure (never dropped
+  silently, never fabricated).
+- **Venue requires a checklist this skill doesn't carry** — say so, point to the
+  official source, and record it as a manual gate in `paper_plan.md`.

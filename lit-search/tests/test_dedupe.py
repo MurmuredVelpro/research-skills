@@ -263,3 +263,39 @@ class TestDeduplicate:
             "title",
         ):
             assert expected in evidence, f"证据 {expected} 在换根后丢失：{evidence}"
+
+    def test_borderline_title_merge_forces_human_review(self):
+        """相似度落在边缘区的标题合并必须显形，不得静默定案。
+
+        两条不同论文若标题相近、同数字、同年，保守匹配仍会合并——合并本身
+        可能对，也可能把两条文献并成一条（不可见的少召回）。边缘区的合并
+        强制进人工队列，比值写进 boundary 清单的证据列。
+        """
+        base = "Deep learning for stroke lesion segmentation on multicenter MRI datasets"
+        # 两处小差异（on→in + 英式拼写）：归一后相似度 96.8，落在边缘区 [95, 97.5)
+        near = "Deep learning for stroke lesion segmentation in multicentre MRI datasets"
+        records = [
+            make("openalex", "W1", base, online="2023-01-10"),
+            make("europepmc", "2", near, online="2023-02-01"),
+        ]
+
+        merged = deduplicate(records, WINDOW, PRIORITY)
+
+        assert len(merged) == 1
+        record = merged[0]
+        assert record.merge_borderline_ratio is not None
+        assert 95.0 <= record.merge_borderline_ratio < 97.5
+        assert record.needs_human_review is True
+
+    def test_high_confidence_title_merge_stays_silent(self):
+        """高置信合并（如仅大小写差异）不打扰人。"""
+        records = [
+            make("openalex", "W1", "ISLES 2022 dataset", online="2022-12-10"),
+            make("pubmed", "1", "isles 2022 DATASET", online="2022-12-11"),
+        ]
+
+        merged = deduplicate(records, WINDOW, PRIORITY)
+
+        assert len(merged) == 1
+        assert merged[0].merge_borderline_ratio is None
+        assert merged[0].needs_human_review is False

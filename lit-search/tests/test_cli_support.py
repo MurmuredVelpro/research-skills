@@ -11,7 +11,9 @@ import json
 import pytest
 
 from litsearch.cli_support import latest_round_judge
+from litsearch.dedupe import CanonicalRecord
 from litsearch.run import Run
+from litsearch.screen import Decision, MergedDecision
 
 
 @pytest.fixture
@@ -73,3 +75,57 @@ class TestLatestRoundJudge:
         write_round(run, 10, provider="api.typesafe.ai", parameters={"judge": "jev"})
 
         assert latest_round_judge(run) == "jev"
+
+
+class TestRetractionQueue:
+    """OpenAlex 标记已撤稿的记录，机器判定不得定谳。"""
+
+    @staticmethod
+    def _decision(key: str, *, needs_human: bool = False, adjudicated_by=None) -> MergedDecision:
+        return MergedDecision(
+            record_key=key,
+            decision=Decision.INCLUDE,
+            needs_human=needs_human,
+            reason="两通道一致",
+            adjudicated_by=adjudicated_by,
+        )
+
+    @staticmethod
+    def _record(key: str, *, retracted: bool) -> CanonicalRecord:
+        return CanonicalRecord(key=key, title=f"T {key}", is_retracted=retracted)
+
+    def test_a_retracted_record_with_a_machine_verdict_is_queued(self):
+        from litsearch.cli_support import _apply_retraction_queue
+
+        decisions = {"k1": self._decision("k1"), "k2": self._decision("k2")}
+        records = {
+            "k1": self._record("k1", retracted=True),
+            "k2": self._record("k2", retracted=False),
+        }
+
+        updated = _apply_retraction_queue(decisions, records)
+
+        assert updated["k1"].needs_human is True
+        assert "已撤稿" in updated["k1"].reason
+        assert updated["k2"].needs_human is False
+
+    def test_a_human_adjudication_outranks_the_retraction_flag(self):
+        """人可以决定引用一篇撤稿文献并自担其责；机器不能每轮把它捞回队列。"""
+        from litsearch.cli_support import _apply_retraction_queue
+
+        decisions = {"k1": self._decision("k1", adjudicated_by="reviewer")}
+        records = {"k1": self._record("k1", retracted=True)}
+
+        updated = _apply_retraction_queue(decisions, records)
+
+        assert updated["k1"].needs_human is False
+
+    def test_an_already_queued_retracted_record_is_not_double_flagged(self):
+        from litsearch.cli_support import _apply_retraction_queue
+
+        decisions = {"k1": self._decision("k1", needs_human=True)}
+        records = {"k1": self._record("k1", retracted=True)}
+
+        updated = _apply_retraction_queue(decisions, records)
+
+        assert updated["k1"].reason == "两通道一致"  # 不叠加前缀

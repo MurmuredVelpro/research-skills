@@ -49,6 +49,15 @@ Seven real decks across register and language (see `manifest.json`): a Transform
 (equation + real BLEU table), and the PANDA medical paper in three forms — English journal-club,
 中文 journal-club (CJK), and a conference-theme cut (0% bullets, section rhythm).
 
+## Seed policy (toward a fully reproducible corpus)
+
+Prefer **arXiv papers whose license permits redistribution** (arXiv non-exclusive licence
+or CC-BY) as benchmark seeds, and commit the source PDF under `benchmarks/sources/<name>.pdf`
+— then `prepare_source.py` is re-runnable by anyone and the grounding/figure legs regress
+at full fidelity, not the reduced-fidelity path described above. When adding a deck, record
+the arXiv id and licence in the manifest row's `note`. Papers without a redistributable
+licence stay on the current path (spec tracked, PDF not).
+
 ## Growing toward 15+
 
 Add cross-discipline papers so the harness exercises every archetype and both languages. Target a

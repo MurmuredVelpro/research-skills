@@ -1785,6 +1785,91 @@ def show_command(
         typer.secho(f"注意      : {note}", fg=typer.colors.YELLOW)
 
 
+@app.command("diff")
+def diff_command(
+    old_run: str = typer.Argument(..., help="旧 run（目录、<topic>/<run_id>，或 <topic> 取最新）"),
+    new_run: str = typer.Argument(..., help="新 run（同上）"),
+    runs_root: Path = typer.Option(DEFAULT_RUNS_ROOT, "--runs-root"),
+    output: Path = typer.Option(None, "--output", help="差异报告写出路径（默认只打印摘要）"),
+    carry: Path = typer.Option(
+        None, "--carry-adjudications",
+        help="把旧 run 的人工裁定结转成 `lit adjudicate` 可导入的 CSV，写到该路径",
+    ),
+) -> None:
+    """两次 run 的语料对账 + 更新型综述的裁定结转。
+
+    检索是快照：窗口前移或协议演进都要重开 run（指纹纪律）。这个命令回答
+    「变了什么、哪些人工工作可以不重做」：新增/消失记录对账、新语料中的
+    撤稿显形，并可把旧 run 的人工终审按 key 结转成裁定导入 CSV。
+    """
+    from litsearch import run_diff
+
+    try:
+        old_dir = Run.open(resolve_run(runs_root, old_run))
+        new_dir = Run.open(resolve_run(runs_root, new_run))
+    except FileNotFoundError as error:
+        typer.secho(str(error), fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2) from error
+
+    old_manifest = old_dir.load_manifest()
+    new_manifest = new_dir.load_manifest()
+    if old_manifest["topic_id"] != new_manifest["topic_id"]:
+        typer.secho(
+            f"两个 run 属于不同课题（{old_manifest['topic_id']} vs {new_manifest['topic_id']}），"
+            f"对账没有意义。",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    old_corpus = run_diff.load_corpus_keys(old_dir)
+    new_corpus = run_diff.load_corpus_keys(new_dir)
+    diff = run_diff.corpus_diff(old_corpus, new_corpus)
+    retracted_new = [row for row in new_corpus.values() if row.get("is_retracted")]
+
+    kept_n, added_n, removed_n = (len(diff[k]) for k in ("kept", "added", "removed"))
+    typer.echo(
+        f"对账 {old_manifest['run_id']} → {new_manifest['run_id']}："
+        f"仍在 {kept_n:,} ｜ 新增 {added_n:,} ｜ 消失 {removed_n:,}"
+    )
+    if retracted_new:
+        typer.secho(
+            f"⚠️ 新语料中 {len(retracted_new):,} 条已被撤稿——更新综述时逐一核验。",
+            fg=typer.colors.YELLOW,
+        )
+
+    if output:
+        report = run_diff.render_diff_markdown(
+            old_id=old_manifest["run_id"],
+            new_id=new_manifest["run_id"],
+            diff=diff,
+            retracted_new=retracted_new,
+        )
+        run_diff.write_text_file(output, report)
+        typer.echo(f"差异报告 → {output}")
+
+    if carry:
+        old_decisions = load_latest_decisions(old_dir) or {}
+        carriable, total = run_diff.count_carriable(old_decisions, new_corpus)
+        csv_text = run_diff.carry_adjudications_csv(
+            old_decisions=old_decisions, new_corpus=new_corpus
+        )
+        run_diff.write_text_file(carry, csv_text)
+        if carriable:
+            typer.secho(
+                f"结转 {carriable:,}/{total:,} 条人工裁定 → {carry}\n"
+                f"导入：uv run lit adjudicate {new_manifest['run_id']} --topic <yaml> "
+                f"--kind screening --input {carry}",
+                fg=typer.colors.GREEN,
+            )
+        else:
+            typer.secho(
+                f"旧 run 没有可结转的人工裁定（共 {total:,} 条人工终审，"
+                f"其中 0 条的 key 仍在新语料）。",
+                fg=typer.colors.YELLOW,
+            )
+
+
 #: 判定器命令定义在 cli_judge.py，在这里注册——它不 import cli.py，所以没有循环依赖。
 #: 放在所有 @app.command 之后，让 --help 里流水线命令保持原顺序，分析类命令排在最后；
 #: 但必须在 `app()` 之前，否则 `python -m litsearch.cli` 会在注册前就把命令跑掉。

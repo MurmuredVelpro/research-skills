@@ -9,6 +9,7 @@ A collection of Claude Code skills for academic research workflows.
 | [medical-imaging-review](./medical-imaging-review/) | Write comprehensive literature reviews for medical imaging AI | `/medical-imaging-review`, "review paper", "survey", "综述" |
 | [paper-slide-deck](./paper-slide-deck/) | Stylized slide **images** (17 T2I aesthetic styles) for reading & sharing — any content | `/paper-slide-deck content.md --style watercolor` |
 | [research-proposal](./research-proposal/) | Generate PhD research proposals with Nature Reviews-style academic writing | `/research-proposal`, "research proposal", "PhD proposal", "研究计划" |
+| [research-paper](./research-paper/) | Draft **original research articles** (IMRaD) from your completed experiments — results-first, reporting-checklist bound | `/research-paper`, "write the paper", "论文写作" |
 | [scholar-slides](./scholar-slides/) | Fidelity-first academic decks for a live talk — vector equations, extracted figures, grounded citations, editable PPTX | "make slides", "组会 PPT", "答辩幻灯片", a paper PDF / arXiv / DOI |
 | [lit-search](./lit-search/) | Exhaustive time-windowed literature retrieval with **measurable recall** — quality-tiered DOI list + formatted references | `/lit-search`, "systematic review", "开题报告的文献检索/查全部分", "把某方向近 N 年文献检索全" |
 
@@ -35,6 +36,7 @@ Copy the desired skill folder into your Claude Code skills directory:
 cp -r medical-imaging-review ~/.claude/skills/
 cp -r paper-slide-deck       ~/.claude/skills/
 cp -r research-proposal      ~/.claude/skills/
+cp -r research-paper         ~/.claude/skills/
 cp -r scholar-slides         ~/.claude/skills/
 cp -r lit-search             ~/.claude/skills/
 ```
@@ -170,6 +172,25 @@ Generate high-quality academic research proposals — PhD applications, research
 - References: count follows the argument (typically 25–50; no minimum, no padding), each verified
 - 3-5 figure suggestions
 - Markdown format (convertible to DOCX/PDF via pandoc)
+
+---
+
+## Research Paper Skill
+
+Draft an **original research article** (IMRaD, conference style, or 中文期刊) from work that is
+already done. Two disciplines distinguish it from the proposal/review skills:
+
+- **Results-first.** Methods and Results are written from the user's actual materials
+  (result tables, metrics, figures); anything not supplied is flagged `[PENDING]`, never
+  filled with a plausible number. A `results_ledger.csv` maps every load-bearing number in
+  the draft back to its source artifact, and the Phase 5 gates reconcile them.
+- **Reporting-checklist bound.** Study type selects a binding checklist at intake
+  (CLAIM 2024 / TRIPOD+AI / STROBE / STARD / venue reproducibility statement); absent-but-
+  required items resolve as reporting, disclosure, or a user-accepted gap — never silence.
+
+Citation discipline is the repository's shared five-rule core in journal-style form
+([docs/citation-integrity-core.md](./docs/citation-integrity-core.md)); the related-work
+corpus can be built by **lit-search** and consumed directly.
 
 ---
 

@@ -53,7 +53,10 @@ Use only the prompts relevant to the question. They are intentionally non-exhaus
 - Missing-sequence robustness and acquisition heterogeneity
 - External validation across sites, scanners, and populations
 
-### Cardiac imaging and ultrasound
+### Echocardiography and non-coronary ultrasound
+
+(Cardiac CT/MR live in "Cardiovascular CT and MR" above; this section covers
+ultrasound-first cardiac work — echo, Doppler, point-of-care ultrasound.)
 
 - Cine, multi-view, Doppler, deformation, and temporal modeling
 - Operator and acquisition dependence
@@ -72,6 +75,43 @@ Use only the prompts relevant to the question. They are intentionally non-exhaus
 - Fundus, OCT, angiography, segmentation, grading, and progression tasks
 - Device shift, image quality, domain adaptation, and longitudinal modeling
 - Screening thresholds, subgroup performance, and referral consequences
+
+### Breast imaging and mammography
+
+- Mammography (2D/tomosynthesis), ultrasound, and MRI screening tasks
+- Prevalence, recall, and threshold effects on measured performance
+- Regulatory density: CADe/CADx pathways, locked-model claims, and post-market surveillance evidence
+- Dense-breast protocols, supplemental screening, and interval-cancer analysis
+
+### Abdominal and oncologic imaging
+
+- Liver (CT/MR including LI-RADS), prostate mpMRI, pancreatic, and kidney tasks
+- Lesion detection/characterization, response assessment (RECIST and beyond), and multi-phase priors
+- Multi-parametric fusion, organ-specific atlases, and longitudinal change modeling
+- Screening-trial evidence and multi-site oncologic workflow endpoints
+
+### Musculoskeletal imaging
+
+- Radiographs, CT, and MRI of joints, spine, and trauma tasks
+- Fracture detection/grading, cartilage and ligament assessment, degenerative staging
+- Anatomic priors, bilateral symmetry, and view-standardization strategies
+- Emergency workflow integration, triage prioritization, and reader-substitution evidence
+
+### Nuclear medicine and molecular imaging
+
+- PET/CT, PET/MR, SPECT: uptake quantification (SUV), lesion detection, and treatment-response tasks
+- PSMA/FDG and theranostic applications; tracer-specific priors
+- Attenuation/segmentation coupling, motion, and partial-volume effects
+- Quantitative reproducibility, phantom standardization, and multicenter calibration
+
+### Acquisition-side AI: reconstruction, denoising, and acceleration
+
+(For method surveys this is often a primary axis rather than a downstream task.)
+
+- Compressed sensing / deep-learning reconstruction, denoising, super-resolution, and acquisition acceleration
+- Artifact suppression (motion, metal, undersampling) and its downstream diagnostic effect
+- Reconstruction-objective vs diagnostic-task trade-offs; loss-function design
+- Scanner-vendor generalization, dose/scan-time claims, and blinded-reader validation
 
 ### Cross-modality or general segmentation
 
