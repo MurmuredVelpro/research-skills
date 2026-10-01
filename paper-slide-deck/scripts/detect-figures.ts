@@ -62,7 +62,7 @@ async function loadDep<T>(name: string, load: () => Promise<T>): Promise<T> {
     const msg = String(err?.message ?? err);
     if (err?.code === "ERR_MODULE_NOT_FOUND" || /Cannot find (module|package)/i.test(msg)) {
       console.error(`\nError: missing Node dependency "${name}".`);
-      console.error(`Install the script dependencies first:\n  cd ${import.meta.dir} && npm install`);
+      console.error(`Install the script dependencies first:\n  cd ${import.meta.dir ?? new URL(".", import.meta.url).pathname} && npm install`);
       process.exit(1);
     }
     throw err;
@@ -199,7 +199,7 @@ async function detectFigures(pdfPath: string): Promise<DetectionResult> {
   console.error(`Loading PDF: ${absolutePath}`);
 
   // Resolve the bundled standard fonts relative to THIS script, not the CWD.
-  const standardFontDataUrl = join(import.meta.dir, "node_modules", "pdfjs-dist", "standard_fonts") + "/";
+  const standardFontDataUrl = join(import.meta.dir ?? new URL(".", import.meta.url).pathname, "node_modules", "pdfjs-dist", "standard_fonts") + "/";
 
   const loadingTask = pdfjsLib.getDocument({
     url: absolutePath,

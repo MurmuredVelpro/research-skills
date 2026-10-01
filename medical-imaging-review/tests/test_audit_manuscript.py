@@ -1639,6 +1639,48 @@ The source defines the method family [@garcía2024].
         self.assertEqual(1, result["reference_count"])
 
 
+
+    def test_a_hard_wrapped_sentence_is_one_whole_claim(self):
+        """标准 76 字符换行排版的手稿，句子不得在行界被腰斩。
+
+        实测缺陷：visible_lines 按物理行返回、切句逐行进行——换行句子的
+        前半从主张检测中静默消失（引用通常在句尾），且原子 ledger 匹配
+        对换行句子永远对不上。
+        """
+        self.make_common()
+        wrapped = (
+            "Three-dimensional Gaussian Splatting has moved from generic scene rendering into\n"
+            "medical imaging. EndoGaussian achieves real-time dynamic endoscopic scene\n"
+            "reconstruction on deformable tissue [@smith2024].\n"
+        )
+        body = source_lines(wrapped)
+        claims = audit.claim_candidates(body)
+        texts = [c.text for c in claims]
+        assert any(
+            t.startswith("EndoGaussian achieves") and t.endswith("deformable tissue")
+            for t in texts
+        ), texts
+
+        # 且 ledger 行（完整句）能对上，不再误报 unverified_claim
+        self.write("references.bib", "@article{smith2024,\n title={Example},\n doi={10.1000/example}\n}\n")
+        row = self.claim_row(
+            "EndoGaussian achieves real-time dynamic endoscopic scene reconstruction on deformable tissue",
+            "smith2024",
+            "doi:10.1000/example",
+        )
+        row["section"] = "preamble"
+        row["claim_type"] = "factual"
+        with (self.project / "claim_ledger.csv").open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=audit.CLAIM_LEDGER_COLUMNS)
+            writer.writeheader()
+            writer.writerow(row)
+        findings, assessed = audit.scan_claim_ledger(body, self.project)
+        self.assertTrue(assessed)
+        self.assertEqual(
+            [], [f for f in findings if f.category == "unverified_claim"]
+        )
+
+
 class CliAndSchemaTests(unittest.TestCase):
     def run_cli(self, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
