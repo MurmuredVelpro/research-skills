@@ -100,14 +100,14 @@ Frozen at takeoff. A run changes `status` and `evidence`, never the criterion.
 
 ### Parked
 
-In the order the human should do them.
+落地时的人工决定（2026-10-10 已全部裁决执行）：
 
-| id | needs | exact action | unblocks | verify afterward |
+| id | needs | exact action | unblocks | 状态 |
 |---|---|---|---|---|
-| P1 (SS-06) | 仓库外文件写入未预授权 | 同步部署副本（两处）：<br>`cp scholar-slides/SKILL.md ~/.claude/skills/scholar-slides/SKILL.md`<br>`cp scholar-slides/SKILL.md ~/.claude-gateway/skills/scholar-slides/SKILL.md`<br>或改为 symlink 指向仓库 | 上一轮+本轮的触发边界修复（NOT 子句、poster/grant-pitch 移除）对真实触发生效 | `diff scholar-slides/SKILL.md ~/.claude/skills/scholar-slides/SKILL.md` 为空；新会话里问「poster 幻灯」不再触发 scholar-slides |
-| P2 (落地) | 合并未预授权 | 人工决定：`git checkout main && git merge --no-ff feat/design-round2 && git merge --no-ff autopilot/design-round3-upgrade && git push`（或按需重排/review） | 两个分支上的全部成果进入 main | `gh run watch`（CI 十一个 job）全绿 |
-| P3 (AU-4) | 合同为你所有 | 决定是否把 gate 的三条新命令（research-paper / research-proposal / 根级 repo-contract 的 pytest）写进 docs/autopilot.md 的机器 gate 表 | 合同与实际 gate 一致 | 下次运行预检与 gate 数量一致 |
-| P4 (AU-5/D2) | 追认或否决 D2 | 追认则无动作；否决则 `git mv research-paper/learnings/README.md lit-search/research-paper/learnings/README.md`（恢复原位） | XC-01 处置的最终性 | `git log --follow research-paper/learnings/README.md` 链条完整 |
+| P1 (SS-06) | 仓库外文件写入未预授权 | 实测后同步部署副本 | 触发边界修复对真实触发生效 | **done**：实测全链（build 12 slides→PDF→PPTX 落新默认路径→parity 真跑→qa json 带 timing）；抢救部署副本独有的 learning（380009a）后 rsync 两处副本，SKILL.md/qa.mjs diff 为空 |
+| P2 (落地) | 合并未预授权 | 合并两分支进 main 并 push | 全部成果进 main | **done**：见下方合并记录 |
+| P3 (AU-4) | 合同为你所有 | gate 三条新命令写进合同 | 合同与实际 gate 一致 | **done**：2a66962 |
+| P4 (AU-5/D2) | 追认或否决 D2 | 追认则无动作 | XC-01 最终性 | **done**：人为追认，git mv 维持 |
 
 ### Not verified
 
