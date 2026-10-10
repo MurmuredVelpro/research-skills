@@ -27,7 +27,7 @@ Never invent a DOI, a journal name, a volume/issue, or page numbers to make a re
 # Placeholder / stub markers that must never survive to delivery.
 # Canonical version lives in SKILL.md Phase 5 (citation gate) — keep the two in
 # sync when editing; this file links to it rather than diverging again.
-grep -nE "xxx|XXXX|\[TBD\]|\[UNVERIFIED\]|10\.xxxx|doi:10\.[a-z]+/x|forthcoming DOI|\[.*占位.*\]" proposal_draft.md
+grep -nE "xxx|XXXX|\[TBD\]|\[UNVERIFIED[^\]]*\]|10\.xxxx|doi:10\.[a-z]+/x|forthcoming DOI|\[.*占位.*\]" proposal_draft.md
 ```
 
 Expected at delivery: 0 hits, OR every `[UNVERIFIED]` explicitly disclosed to the user and never presented as a confirmed source.

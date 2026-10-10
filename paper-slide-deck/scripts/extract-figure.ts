@@ -113,7 +113,8 @@ async function extractPage(args: Args) {
 
   // Resolve the bundled standard fonts relative to THIS script, not the CWD
   // (the skill runs with CWD set to the output dir, which has no node_modules).
-  const standardFontDataUrl = join(import.meta.dir, "node_modules", "pdfjs-dist", "standard_fonts") + "/";
+  const scriptDir = import.meta.dir ?? new URL(".", import.meta.url).pathname;
+  const standardFontDataUrl = join(scriptDir, "node_modules", "pdfjs-dist", "standard_fonts") + "/";
 
   // Load the PDF document
   const loadingTask = pdfjsLib.getDocument({

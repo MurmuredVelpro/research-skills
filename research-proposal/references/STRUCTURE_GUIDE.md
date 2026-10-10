@@ -190,7 +190,7 @@ Demonstrate knowledge of the field, identify research gap, and position your stu
 - How you build on existing work
 
 ### Citation Density
-- Aim for 15-30 citations in literature review
+- Cite what the argument needs (see SKILL.md: no quota, no padding) — typically concentrated on load-bearing claims
 - Balance classic works with recent publications (last 5 years)
 - Cite primary sources when possible
 
@@ -291,7 +291,7 @@ Demonstrate feasibility and planning competence.
 **Gantt Chart Description:**
 If including visual, describe key overlaps and dependencies.
 
-### Standard PhD Timeline (36-48 months)
+### Standard PhD Timeline (36–57 months sequential; ~48 with phase overlaps)
 
 | Phase | Typical Duration |
 |-------|-----------------|

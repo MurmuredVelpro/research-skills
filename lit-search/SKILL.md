@@ -337,6 +337,22 @@ lit screen-eval <run> --topic ... --reference-round <人工裁决过的轮次> \
 
 ---
 
+## 召回证据的层级（读报告前先明确）
+
+- **金标召回**度量的是「你已经知道的文献找回了多少」——它对**未知未知**
+  无话可说，且金标本身偏向已被检索习惯覆盖的文献（循环性是这指标的固有上限）。
+- **捕获-再捕获估计**（`lit validate`，PubMed×OpenAlex 双源）才是对总体漏检的
+  统计陈述；**滚雪球饱和曲线**是独立的行为证据。三者一起读：金标是下界验证，
+  再捕获和饱和才是「还剩多少没找到」的回答。
+
+## 更新型综述：`lit diff`
+
+检索是快照。窗口前移或协议演进都要**重开 run**（指纹纪律，改窗口=新协议），
+然后用 `lit diff <旧run> <新run>` 对账：仍在/新增/消失的记录清单、新语料中的
+撤稿显形，并可 `--carry-adjudications` 把旧 run 的**人工终审**（机器 triage
+不结转）按 key 结转成 `lit adjudicate` 可直接导入的 CSV——更新一篇 SLR 不必
+从零人筛。`--output` 另存人读的差异报告。
+
 ## learnings：复盘先于重试
 
 改判定逻辑、阈值、采集行为或产物契约之前，先扫一遍 [`learnings/`](learnings/)——
@@ -414,7 +430,7 @@ lit screen-eval <run> --topic ... --reference-round <人工裁决过的轮次> \
 | `records*.jsonl` | 逐源记录，按采集阶段分文件，只追加不改写 |
 | `corpus.jsonl` | 去重后的规范语料（派生产物，可随时重算） |
 | `manifest.json` | 协议指纹 + 每条检索式的结局与状态 |
-| `boundary_cases.csv` | 日期精度不足，需人工裁定 |
+| `boundary_cases.csv` | 日期精度不足、以及边缘区标题合并（相似度 95–97.5，合并拿不准）——需人工裁定 |
 | `human_queue.csv` | 双通道分歧或低置信度，需人工裁定；`lit triage` 会把它按最可能纳入重排并附上判定器线索 |
 | `screening_trial.json` / `human_queue_trial.csv` | `--limit` 试跑的轮次与队列（**校准时看这两个**，不是 `human_queue.csv`）；不占正式轮次号 |
 | `jev_scores.jsonl` | 判定 API 的逐条打分（`--model jev` / `lit triage`）。改阈值只需重新路由，不重打 |
@@ -426,4 +442,4 @@ lit screen-eval <run> --topic ... --reference-round <人工裁决过的轮次> \
 | `artifacts.json` | 派生产物内容哈希与输入依赖哈希；由 `lit verify` 检查过期 |
 | `ranked.jsonl` / `ranked.csv` | 分层标注（`ranked.jsonl` 是元数据缓存） |
 | `tier_report.md` | 分层构成与逐级匹配率 |
-| `dois.md` / `references.md` / `references.bib` | **交付物** |
+| `dois.md` / `references.md` / `references.bib` | **交付物**。OpenAlex 标记已撤稿的条目单列「⚠️ 已撤稿」一节并在行内标记；筛选时撤稿记录强制升入人工队列（机器不得定谳撤稿文献，人工裁定可以） |

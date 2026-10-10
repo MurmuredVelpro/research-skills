@@ -182,6 +182,21 @@ def dois_markdown(
         f"其余 {total - with_doi:,} 条见文末，需人工处理。",
         "",
     ]
+    retracted = [item for item in ranked if item.is_retracted]
+    if retracted:
+        lines += [
+            f"## ⚠️ 已撤稿（{len(retracted)}）",
+            "",
+            "OpenAlex 标记为 retracted 的条目。**引用前必须人工核验**撤稿原因与替代文献；"
+            "它们仍按分层列在下方各表中，但每行都带 ⚠️ 标记，不可静默纳入。",
+            "",
+            "| 标题 | DOI |",
+            "|---|---|",
+        ]
+        for item in retracted:
+            doi = f"`{item.doi}`" if item.doi else "—"
+            lines.append(f"| {item.title.replace('|', chr(92) + '|')[:110]} | {doi} |")
+        lines.append("")
 
     for tier, items in grouped:
         lines += [f"## {tier.heading}（{len(items):,}）", "", f"> {tier.rationale}", ""]
@@ -193,8 +208,10 @@ def dois_markdown(
             doi = f"`{item.doi}`" if item.doi else "—"
             venue = (item.journal_name or item.venue or "—")[:46]
             title_cell = item.title.replace("|", r"\|")[:110]
+            retracted_mark = "⚠️已撤稿 " if item.is_retracted else ""
+            tier_line = _tier_line(item) or "—"
             lines.append(
-                f"| {index} | {doi} | {title_cell} | {venue} | {_tier_line(item) or '—'} |"
+                f"| {index} | {doi} | {retracted_mark}{title_cell} | {venue} | {tier_line} |"
             )
         lines.append("")
 

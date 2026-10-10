@@ -38,3 +38,12 @@ Use these literal markers; the QA gate scans for them and they are reviewed at C
 - `[GENERATED]` — title/conceptual art produced by an image model.
 
 A deck may ship with flags **only** after the user has seen and accepted each one at CKPT-3.
+
+## What grounding does NOT prove
+
+The QA number-grounding check proves a number on a slide **appears in the source text** —
+boundary-matched, not superstring. It does **not** prove semantic correctness: a slide can
+say "increased" where the source says "decreased", quote the right number against the wrong
+metric, or drop a unit and still pass grounding. Direction, unit, and claim-to-evidence
+mapping are CKPT-3 human checks; treat "grounding passed" as "no fabricated digits", never
+as "the claim is right".

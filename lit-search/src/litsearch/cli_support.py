@@ -163,6 +163,9 @@ def finish_screening_round(
             fg=typer.colors.YELLOW,
         )
 
+    carried = _apply_retraction_queue(carried, records)
+    result = replace(result, decisions=carried)
+
     counts = _echo_counts(carried)
     written = commit_round(run_dir, topic_path, result, records, topic=topic, trial=trial)
     if trial:
@@ -177,6 +180,44 @@ def finish_screening_round(
         fg=typer.colors.YELLOW,
     )
     return written
+
+
+def _apply_retraction_queue(
+    decisions: dict[str, MergedDecision], records: Mapping[str, CanonicalRecord]
+) -> dict[str, MergedDecision]:
+    """OpenAlex 标记已撤稿的记录，机器判定不得定谳——一律升入人工队列。
+
+    该信号采集了多年却没有任何消费者：撤稿文献会安静地混过双通道筛选
+    流进交付物。规则：没有**人工**裁定的撤稿记录强制 needs_human（每轮
+    重新排队，直到人处理）；已有人工裁定的不动——人可以决定引用一篇
+    撤稿文献并自担其责，机器不行。
+    """
+    updated: dict[str, MergedDecision] = {}
+    flagged = 0
+    for key, decision in decisions.items():
+        record = records.get(key)
+        if (
+            record is not None
+            and record.is_retracted
+            and not decision.adjudicated_by
+            and not decision.needs_human
+        ):
+            updated[key] = decision.model_copy(
+                update={
+                    "needs_human": True,
+                    "reason": f"⚠️ 已撤稿（OpenAlex 标记），终审必须人工：{decision.reason}",
+                }
+            )
+            flagged += 1
+        else:
+            updated[key] = decision
+    if flagged:
+        typer.secho(
+            f"\n⚠️ {flagged:,} 条记录被 OpenAlex 标记为已撤稿，已强制升入人工队列"
+            f"（机器不得定谳撤稿文献）。",
+            fg=typer.colors.YELLOW,
+        )
+    return updated
 
 
 def latest_round_judge(run_dir: Run) -> str | None:

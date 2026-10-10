@@ -17,10 +17,41 @@ from .parsing import *  # noqa: F401,F403
 from .projectio import *  # noqa: F401,F403
 
 
+def merge_wrapped_lines(body_lines: list[SourceLine]) -> list[SourceLine]:
+    """把硬换行的散文合并成每段一个逻辑行（行号取段首物理行）。
+
+    ``visible_lines`` 按**物理行**返回，而下面的切句是逐行进行的：硬换行
+    （标准 76 字符排版的手稿）会在行界把句子腰斩——实测一段正常排版的引言，
+    每个句子只有**最后一行**进入主张检测（引用通常挂在句尾），前半句静默
+    逃过审计，且原子 ledger 匹配对换行句子永远对不上。标题与空行保持为
+    段边界，原样透传。
+    """
+    merged: list[SourceLine] = []
+    buffer: list[str] = []
+    start = 0
+
+    def flush() -> None:
+        nonlocal start
+        if buffer:
+            merged.append(SourceLine(start, " ".join(buffer)))
+            buffer.clear()
+
+    for line in body_lines:
+        if not line.text.strip() or parse_heading(line.text):
+            flush()
+            merged.append(line)
+            continue
+        if not buffer:
+            start = line.number
+        buffer.append(line.text.strip())
+    flush()
+    return merged
+
+
 def claim_candidates(body_lines: list[SourceLine]) -> list[ClaimCandidate]:
     candidates: list[ClaimCandidate] = []
     section = "preamble"
-    for source in body_lines:
+    for source in merge_wrapped_lines(body_lines):
         heading = parse_heading(source.text)
         if heading:
             section = strip_heading_number(heading[1])

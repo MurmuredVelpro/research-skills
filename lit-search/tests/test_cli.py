@@ -1817,3 +1817,124 @@ class TestFacets:
 
         registry = json.loads((run_dir.root / "artifacts.json").read_text())["artifacts"]
         assert registry["facets.csv"]["inputs"].keys() == {"included.jsonl"}
+
+
+class TestRunDiff:
+    """`lit diff`：更新型综述的地基——语料对账 + 人工裁定结转。"""
+
+    def test_diff_accounts_added_removed_and_carries_adjudications(
+        self, seeded_run, topic_path, runs_root
+    ):
+        import json as _json
+
+        # 旧 run：加一条会被"消失"的记录，并把一条在屏记录人工裁定为 include
+        rows = list(seeded_run.read_jsonl("corpus.jsonl"))
+        removed_row = _json.loads(_json.dumps(rows[0]))
+        removed_row["key"] = removed_row["key"] + "-old-only"
+        seeded_run.write_jsonl("corpus.jsonl", rows + [removed_row])
+        in_window = [
+            r for r in rows if r["window_status"] == "in_window" and r["key"] != removed_row["key"]
+        ]
+        assert in_window
+        keep_key = in_window[0]["key"]
+        adjudicated = {
+            keep_key: {
+                "record_key": keep_key,
+                "decision": "include",
+                "needs_human": False,
+                "reason": "人工裁定：确为相关研究",
+                "adjudicated_by": "louwill",
+                "adjudication_reason": "确为相关研究",
+            },
+            removed_row["key"]: {
+                "record_key": removed_row["key"],
+                "decision": "exclude",
+                "needs_human": False,
+                "reason": "人工裁定：不相关",
+                "adjudicated_by": "louwill",
+                "adjudication_reason": "不相关",
+            },
+        }
+        _write_round(seeded_run, 1, adjudicated)
+
+        # 新 run：同一课题、语料少那条"消失"记录
+        from litsearch.run import RunManifest
+
+        seeded_run2 = Run.create(runs_root, "t", "20200102T000000Z")
+        seeded_run2.write_jsonl("corpus.jsonl", rows)
+        seeded_run2.save_manifest(
+            RunManifest(
+                run_id="20200102T000000Z",
+                topic_id="t",
+                topic_sha256="a",
+                topic_fingerprint="b",
+                created_at="",
+                window_start="",
+                window_end="",
+                harvest_start="",
+                harvest_end="",
+                date_priority=[],
+                sources=[],
+            )
+        )
+
+        out_csv = runs_root.parent / "carry.csv"
+        result = runner.invoke(
+            app,
+            [
+                "diff", seeded_run.root.name, seeded_run2.root.name,
+                "--runs-root", str(runs_root),
+                "--carry-adjudications", str(out_csv),
+            ],
+        )
+        # run 名解析按 <topic> 最新等规则；这里直接用目录名可能歧义，改用完整路径重试
+        if result.exit_code != 0:
+            result = runner.invoke(
+                app,
+                [
+                    "diff", str(seeded_run.root), str(seeded_run2.root),
+                    "--runs-root", str(runs_root),
+                    "--carry-adjudications", str(out_csv),
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert "新增" in result.output and "消失" in result.output
+        assert "结转 1/2" in result.output
+
+        import csv as _csv
+        with out_csv.open(encoding="utf-8") as handle:
+            carried = list(_csv.DictReader(handle))
+        assert [row["record_key"] for row in carried] == [keep_key]
+        assert carried[0]["reviewer"] == "louwill"
+        assert carried[0]["decision"] == "include"
+        assert "结转自旧 run" in carried[0]["reason"]
+
+    def test_diff_refuses_cross_topic_runs(self, seeded_run, topic_path, runs_root):
+        from litsearch.run import RunManifest
+
+        other = Run.create(runs_root, "other", "20200103T000000Z")
+        other.write_jsonl("corpus.jsonl", list(seeded_run.read_jsonl("corpus.jsonl")))
+        other.save_manifest(
+            RunManifest(
+                run_id="20200103T000000Z",
+                topic_id="other",
+                topic_sha256="a",
+                topic_fingerprint="b",
+                created_at="",
+                window_start="",
+                window_end="",
+                harvest_start="",
+                harvest_end="",
+                date_priority=[],
+                sources=[],
+            )
+        )
+
+        result = runner.invoke(
+            app,
+            ["diff", str(seeded_run.root), str(other.root), "--runs-root", str(runs_root)],
+        )
+
+        assert result.exit_code == 2
+        assert "不同课题" in result.output

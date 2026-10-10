@@ -190,7 +190,8 @@ export function validateSlideNumbers(slides: SlideInfo[]): {
 }
 
 function findBasePrompt(): string | undefined {
-  const scriptDir = import.meta.dir;
+  // import.meta.dir is bun-only; fall back to the URL so plain node works too.
+  const scriptDir = import.meta.dir ?? new URL(".", import.meta.url).pathname;
   const basePromptPath = join(scriptDir, "..", "references", "base-prompt.md");
   if (existsSync(basePromptPath)) {
     return readFileSync(basePromptPath, "utf-8");

@@ -534,7 +534,7 @@ def _window_counts(canonical: list[CanonicalRecord]) -> dict[str, int]:
 
 
 def _boundary_csv(canonical: list[CanonicalRecord]) -> str:
-    """边界与无日期记录清单——这些绝不能被静默处理，必须人工裁定。
+    """边界、无日期、边缘标题合并的记录清单——这些绝不能被静默处理，必须人工裁定。
 
     csv 模块写入：title/evidence 含 ASCII 引号或逗号时手工拼引号会在
     csv.DictReader 回读（adjudicate --kind date 导入）时错位断列。
@@ -564,6 +564,9 @@ def _boundary_csv(canonical: list[CanonicalRecord]) -> str:
         evidence = " | ".join(
             f"{field}={value}" for field, value in record.dates.model_dump().items() if value
         )
+        if record.merge_borderline_ratio is not None:
+            flag = f"⚠️title_merge_borderline={record.merge_borderline_ratio:.1f}"
+            evidence = f"{evidence} | {flag}" if evidence else flag
         writer.writerow(
             [
                 record.key,

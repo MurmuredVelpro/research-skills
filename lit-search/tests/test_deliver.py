@@ -283,3 +283,37 @@ class TestValidateCitation:
         result = await fetch_citations(client, [_ranked("k")], style="apa")
         assert result["k"].verified is False
         assert "<" not in result["k"].text
+
+
+class TestRetractionSurfacing:
+    """撤稿信号在交付物里必须显形——它被采集了多年却从没人消费。"""
+
+    def test_retracted_records_get_a_dedicated_section_and_row_marks(self):
+        text = dois_markdown(
+            [
+                _ranked("a"),
+                _ranked("b", is_retracted=True, title="Retracted imaging study"),
+            ],
+            today=TODAY,
+            title="T",
+        )
+
+        assert "⚠️ 已撤稿（1）" in text
+        assert "Retracted imaging study" in text.split("已撤稿（1）")[1].split("##")[0]
+        assert "引用前必须人工核验" in text
+        # 分层表里的那一行也带标记，不会被漏看
+        assert "⚠️已撤稿 Retracted imaging study" in text
+
+    def test_clean_delivery_mentions_no_retractions(self):
+        text = dois_markdown([_ranked("a")], today=TODAY, title="T")
+
+        assert "已撤稿" not in text
+
+    def test_ranked_csv_carries_a_retracted_column(self):
+        from litsearch.rank import ranked_csv
+
+        rows = ranked_csv([_ranked("a"), _ranked("b", is_retracted=True)]).splitlines()
+
+        assert rows[0].rstrip().endswith("retracted")
+        assert rows[1].rstrip().endswith(",")
+        assert rows[2].rstrip().endswith("Y")

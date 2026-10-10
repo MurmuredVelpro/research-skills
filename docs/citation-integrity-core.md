@@ -50,6 +50,7 @@ A deliverable ships with flags **only** after the user has seen and accepted eac
 | research-proposal | `references/CITATION_INTEGRITY.md` | (Author, Year) / GB/T 7714 顺序编码制 | Phase 2 verification gate + Phase 5 grep citation gate |
 | scholar-slides | `references/integrity.md` | Zotero-grounded citations, `[Figure N]` attribution | CKPT-3 self-review + integrity QA (number grounding, flag scan) |
 | paper-slide-deck | `SKILL.md` Step 6.5 | citations baked into images | post-generation visual proofread, `[CHECK]` escalation |
+| research-paper | `references/CITATION_INTEGRITY.md` | journal styles (author–year or numeric per venue) | Phase 2 verification + Phase 5 grep gates & results_ledger reconciliation |
 
 Variant-specific extensions stay in the variant: the medical ledger's split/comparator/
 uncertainty columns, the proposal's (Author, Year) reconciliation regex, the slides' figure

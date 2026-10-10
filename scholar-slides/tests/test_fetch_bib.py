@@ -83,4 +83,7 @@ def test_parse_arxiv_atom():
 @pytest.mark.skipif(not _network_available(), reason="offline: export.arxiv.org unreachable")
 def test_resolve_arxiv_live():
     e = fb.resolve("1706.03762")
+    if not e.get("resolved") and "Server Error" in str(e.get("error", "")):
+        # arXiv 的 API 在负载下常态性 502/503——上游抖动不是回归，skip 并注明。
+        pytest.skip(f"arXiv API upstream error: {e.get('error')}")
     assert e.get("resolved") and "Attention" in e["title"] and e["arxiv"] == "1706.03762"

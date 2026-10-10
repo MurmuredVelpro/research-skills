@@ -101,6 +101,9 @@ class CanonicalRecord(BaseModel):
     citation_count: int | None = None
     referenced_works: list[str] = Field(default_factory=list)
     is_retracted: bool = False
+    #: 标题模糊合并的相似度落在边缘区时记录比值；needs_human_review 据此强制
+    #: 进人工队列——两条不同论文被静默合并等于一次不可见的少召回。
+    merge_borderline_ratio: float | None = None
     dates: DateEvidence = Field(default_factory=DateEvidence)
     canonical_date: PartialDate | None = None
     window_status: WindowStatus | None = None
@@ -148,7 +151,10 @@ class CanonicalRecord(BaseModel):
 
     @property
     def needs_human_review(self) -> bool:
-        return self.window_status in {WindowStatus.BOUNDARY, WindowStatus.UNDATED}
+        return (
+            self.window_status in {WindowStatus.BOUNDARY, WindowStatus.UNDATED}
+            or self.merge_borderline_ratio is not None
+        )
 
     @property
     def year(self) -> int | None:
@@ -241,17 +247,29 @@ def _build_canonical(members: list[Record], evidence: list[str]) -> CanonicalRec
     )
 
 
-def _titles_match(left: Record, right: Record) -> bool:
-    """保守的标题配对判定。"""
+#: 相似度落在 [TITLE_SIMILARITY_THRESHOLD, BORDERLINE_TITLE_THRESHOLD) 的合并
+#: 视为"拿不准"：合并仍然执行（判定本身是保守的），但规范记录强制进人工队列——
+#: 两条**不同**论文标题相近、同年、同数字时被静默合并，等于一次不可见的少召回。
+BORDERLINE_TITLE_THRESHOLD = 97.5
+
+
+def _title_ratio(left: Record, right: Record) -> float | None:
+    """保守标题配对的相似度；前置守卫不满足时返回 None（不配对）。"""
     if numeric_tokens(left.title) != numeric_tokens(right.title):
-        return False
+        return None
 
     left_year, right_year = left.year, right.year
     if left_year is not None and right_year is not None:
         if abs(left_year - right_year) > MAX_YEAR_GAP:
-            return False
+            return None
 
-    return fuzz.ratio(title_key(left.title), title_key(right.title)) >= TITLE_SIMILARITY_THRESHOLD
+    return fuzz.ratio(title_key(left.title), title_key(right.title))
+
+
+def _titles_match(left: Record, right: Record) -> bool:
+    """保守的标题配对判定。"""
+    ratio = _title_ratio(left, right)
+    return ratio is not None and ratio >= TITLE_SIMILARITY_THRESHOLD
 
 
 def deduplicate(
@@ -295,13 +313,18 @@ def deduplicate(
     for index, record in enumerate(items):
         blocks.setdefault(title_key(record.title)[:TITLE_BLOCK_PREFIX], []).append(index)
 
+    borderline: dict[int, float] = {}
     for bucket in blocks.values():
         for position, left_index in enumerate(bucket):
             for right_index in bucket[position + 1 :]:
                 if union.find(left_index) == union.find(right_index):
                     continue
-                if _titles_match(items[left_index], items[right_index]):
-                    evidence[_union(left_index, right_index)].add("title")
+                ratio = _title_ratio(items[left_index], items[right_index])
+                if ratio is not None and ratio >= TITLE_SIMILARITY_THRESHOLD:
+                    root = _union(left_index, right_index)
+                    evidence[root].add("title")
+                    if ratio < BORDERLINE_TITLE_THRESHOLD:
+                        borderline[root] = max(borderline.get(root, 0.0), ratio)
 
     grouped: dict[int, list[int]] = {}
     for index in range(len(items)):
@@ -311,6 +334,7 @@ def deduplicate(
     for root in sorted(grouped):
         members = [items[index] for index in sorted(grouped[root])]
         record = _build_canonical(members, sorted(evidence.get(root, set())))
+        record.merge_borderline_ratio = borderline.get(root)
         record.canonical_date = resolve_canonical_date(record.dates, date_priority)
         record.window_status = classify_window(record.canonical_date, window)
         # 只比较**同一个字段**在各源之间的取值——跨字段分歧由 date_priority 规则解决
