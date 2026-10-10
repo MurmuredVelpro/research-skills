@@ -13,6 +13,7 @@ import json
 import re
 import shutil
 import sys
+import time
 import uuid
 from datetime import datetime, timezone
 from io import StringIO
@@ -579,10 +580,16 @@ def initialize_project(
         raise ProjectInitError(f"refusing to overwrite existing path: {target}")
 
     # 清理被硬杀（SIGKILL）遗留的陈旧 staging：except 分支只清本次的，
-    # mkdir 与 rename 之间被杀会留下隐藏目录，后续运行既不识别也不清理
+    # mkdir 与 rename 之间被杀会留下隐藏目录，后续运行既不识别也不清理。
+    # 年龄守卫（>15 分钟）：并发初始化的 staging 是秒级新鲜的，无守卫的
+    # 全量清理会删掉另一个实例正在进行的工作
+    cutoff = time.time() - 900
     for stale in review_root.glob(".initializing-*"):
-        if stale.is_dir() and not stale.is_symlink():
-            shutil.rmtree(stale, ignore_errors=True)
+        try:
+            if stale.is_dir() and not stale.is_symlink() and stale.stat().st_mtime < cutoff:
+                shutil.rmtree(stale, ignore_errors=True)
+        except OSError:
+            pass  # 清理是尽力而为；竞态下消失的目录不是错误
 
     staging = review_root / f".initializing-{resolved_id}-{uuid.uuid4().hex[:8]}"
     staging.mkdir(exist_ok=False)

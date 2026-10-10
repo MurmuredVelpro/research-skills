@@ -103,7 +103,7 @@ Mechanical gates (paste command output as evidence):
 
 ```bash
 # 1) Placeholder gate — zero hits (or disclosed [UNVERIFIED]/[PENDING])
-grep -nE "xxx|XXXX|\[TBD\]|\[PENDING|\[UNVERIFIED[^\]]*\]|10\.xxxx|doi:10\.[a-z]+/x" paper_draft.md
+grep -nE "xxx|XXXX|\[TBD\]|\[PENDING|\[UNVERIFIED[^]]*\]|10\.xxxx|doi:10\.[a-z]+/x" paper_draft.md
 
 # 2) AI-tell gate — zero hits
 grep -nEi "over the past ((few|several|two|three) )?(decades?|years)|in recent years,|it is worth noting|plays a (crucial|pivotal) role|has garnered significant attention|delves into|a testament to|众所周知|近年来，?随着|日益受到(广泛)?关注" paper_draft.md

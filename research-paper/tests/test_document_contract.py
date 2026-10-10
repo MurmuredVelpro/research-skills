@@ -9,6 +9,9 @@ zero-hits 门禁完全隐形。此测试让那类漂移在 CI 变红。
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -16,6 +19,25 @@ ROOT = Path(__file__).resolve().parents[1]
 
 #: 两处占位符门禁 grep 的形状（SKILL.md Phase 5 与 QUALITY_CHECKLIST 各一份）
 GATE_GREP_RE = re.compile(r'grep -nE "([^"]+)" paper_draft\.md')
+
+#: 测试必须用**真实 grep**执行提取出的模式——codex 评审 CB-1：`[^\]]`
+#: 在 Python re / ugrep 里语义正确，在 BSD/POSIX grep 里不匹配。用 re 验证
+#: 一个 grep 门禁等于用错的引擎证明对的结论。
+GREP = "/usr/bin/grep" if Path("/usr/bin/grep").exists() else shutil.which("grep")
+
+
+def run_gate_grep(pattern: str, text: str) -> bool:
+    """用系统 grep -E 判断 pattern 是否命中 text（引擎=门禁引擎）。"""
+    with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as handle:
+        handle.write(text)
+        name = handle.name
+    try:
+        result = subprocess.run(
+            [GREP, "-nE", pattern, name], capture_output=True, text=True, check=False
+        )
+    finally:
+        Path(name).unlink(missing_ok=True)
+    return result.returncode == 0
 
 
 def placeholder_gate_patterns() -> list[tuple[str, str]]:
@@ -39,21 +61,24 @@ class PlaceholderGateContract(unittest.TestCase):
     def test_gate_matches_the_documented_colon_flag_form(self):
         """CITATION_INTEGRITY Rule 3 规定旗标格式为 `[UNVERIFIED: …]`。
 
-        门禁正则必须命中它，否则按文档打旗标的未核验引用逃过 zero-hits 门禁。
+        门禁正则必须**在真实 grep 下**命中它，否则按文档打旗标的未核验
+        引用逃过 zero-hits 门禁（CB-1：Python re 验证不等于 grep 验证）。
         """
         for relative, pattern in placeholder_gate_patterns():
-            with self.subTest(file=relative):
+            with self.subTest(file=relative, engine=GREP):
                 self.assertTrue(
-                    re.search(pattern, "We compare against [UNVERIFIED: Smith et al. 2024]."),
-                    f"{relative} 的门禁放走了文档规定的冒号形旗标",
+                    run_gate_grep(
+                        pattern, "We compare against [UNVERIFIED: Smith et al. 2024]."
+                    ),
+                    f"{relative} 的门禁在真实 grep 下放走了文档规定的冒号形旗标",
                 )
 
     def test_gate_still_matches_the_bare_flag_form(self):
         for relative, pattern in placeholder_gate_patterns():
-            with self.subTest(file=relative):
-                self.assertTrue(re.search(pattern, "Pending entry [UNVERIFIED]."))
-                self.assertTrue(re.search(pattern, "Value [PENDING: user to supply]."))
-                self.assertTrue(re.search(pattern, "Value [PENDING]."))
+            with self.subTest(file=relative, engine=GREP):
+                self.assertTrue(run_gate_grep(pattern, "Pending entry [UNVERIFIED]."))
+                self.assertTrue(run_gate_grep(pattern, "Value [PENDING: user to supply]."))
+                self.assertTrue(run_gate_grep(pattern, "Value [PENDING]."))
 
 
 class AiTellGateContract(unittest.TestCase):

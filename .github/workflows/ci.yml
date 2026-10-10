@@ -80,6 +80,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24" # native TS type-stripping for importing the .ts source in tests
+      - name: Install node deps for merge tests
+        working-directory: paper-slide-deck/scripts
+        run: npm ci
       - run: node --test tests/*.mjs
 
   research-paper:

@@ -9,15 +9,16 @@ the proposal skill: your own numbers are the fabrication risk here.
 
 - [ ] Placeholder gate returns 0 hits, or every `[UNVERIFIED]`/`[PENDING]` is
       explicitly disclosed and never presented as real:
-      `grep -nE "xxx|XXXX|\[TBD\]|\[PENDING|\[UNVERIFIED[^\]]*\]|10\.xxxx|doi:10\.[a-z]+/x" paper_draft.md`
+      `grep -nE "xxx|XXXX|\[TBD\]|\[PENDING|\[UNVERIFIED[^]]*\]|10\.xxxx|doi:10\.[a-z]+/x" paper_draft.md`
 - [ ] AI-tell gate returns 0 hits (regex in SKILL.md Phase 5).
 - [ ] **Reporting-checklist artifact**: `checklist_<name>.md` exists next to the draft
       and has no unresolved rows:
       ```bash
-      ls checklist_*.md && ! grep -nE "\[ \]\s*$" checklist_*.md
+      ls checklist_*.md && ! grep -nE "^[[:space:]]*- \[ \]" checklist_*.md
       ```
-      (`grep` finding an unchecked `- [ ]` box fails the `!` — every binding-checklist
-      row must be answered, even if the answer is a documented gap.)
+      (`grep` finding an unchecked `- [ ]` box — anywhere in the item line — fails
+      the `!`; checked `- [x]` rows pass. Every binding-checklist row must be
+      answered, even if the answer is a documented gap.)
 
 - [ ] **results_ledger reconciliation**: every number in the manuscript's own
       prose — Abstract, Methods (n=, doses, hyperparameters), Results, and

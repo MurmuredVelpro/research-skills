@@ -37,8 +37,10 @@
   运行门禁 **0 命中（exit 1）**。严格按文档打旗标的未核验引用对 zero-hits 门禁完全
   隐形——披露纪律可被静默绕过且带"机械证据"。与 78c69ab 给 research-proposal 修掉
   的缺陷同型，本 skill 在同一 commit 里创建却继承了旧模式。
-- 修法：两处 `\[UNVERIFIED\]` → `\[UNVERIFIED[^\]]*\]`（与 research-proposal 的
-  canonical 版对齐）。
+- 修法：两处 `\[UNVERIFIED\]` → `\[UNVERIFIED[^]]*\]`（POSIX 可移植的排除括号写法，
+  与 research-proposal 的 canonical 版对齐。落地批注：初版用了 `[^\]]`——在
+  Python re/ugrep 下正确、在 BSD/POSIX grep 下静默失配，codex 评审 CB-1 抓出后
+  改为 `[^]]` 并让契约测试用真实 grep 执行）。
 
 ### LS-01 [A1] lit-search：`harvest --resume` 静默丢弃已提交阶段记录，却把阶段结局抄进新 manifest
 - 位置：`src/litsearch/harvest.py:271-274`（对照同文件 :359-369 `read_all_records`）

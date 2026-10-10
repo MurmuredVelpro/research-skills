@@ -228,22 +228,32 @@ class InitReviewProjectTests(unittest.TestCase):
                         MODULE.initialize_project(Path(raw), "ccta-review", route)
 
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_stale_initializing_staging_is_swept_but_fresh_one_kept(self) -> None:
+        """第三轮评审 MIR-13 + codex CB-2：mkdir 与 rename 之间被硬杀会留下
+        .initializing-* 残骸。清理必须带年龄守卫——并发初始化的 staging 是
+        秒级新鲜的，删它等于删掉活跃工作；只清足够老的残骸。"""
+        import os
+        import time
 
-    def test_stale_initializing_staging_is_swept_by_a_later_init(self) -> None:
-        """第三轮评审 MIR-13：mkdir 与 rename 之间被硬杀会留下
-        .initializing-* 残骸，后续运行既不识别也不清理。"""
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
-            stale = root / "review_project" / ".initializing-leftover-deadbeef"
+            review_root = root / "review_project"
+            stale = review_root / ".initializing-leftover-deadbeef"
             stale.mkdir(parents=True)
             (stale / "review_config.yaml").write_text("junk", encoding="utf-8")
+            old = time.time() - 3600  # 一小时前的残骸
+            os.utime(stale, (old, old))
+            fresh = review_root / ".initializing-active-beefcafe"
+            fresh.mkdir()
+            (fresh / "review_config.yaml").write_text("busy", encoding="utf-8")
+
             target = MODULE.initialize_project(
                 root, "ccta-review", "narrative", project_id=PROJECT_ID
             )
             self.assertTrue(target.exists())
             self.assertFalse(stale.exists(), "陈旧 staging 应被清走")
-            self.assertEqual(
-                [], list((root / "review_project").glob(".initializing-*"))
-            )
+            self.assertTrue(fresh.exists(), "新鲜 staging（可能是并发实例的）必须留下")
+
+
+if __name__ == "__main__":
+    unittest.main()
