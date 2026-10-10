@@ -1235,19 +1235,21 @@ AI did not replace human decisions.
                 self.assertEqual([], audit.claim_candidates(source_lines(sentence)))
 
     def test_directional_candidate_and_alignment_expansion(self):
+        # 句内必须挂 [@smith2024]：无内联 citekey 的方向性主张是两角三角链
+        # （claim_without_citekey），不再进入 ledger 对账
         examples = (
-            ("The rate doubled.", "higher"),
-            ("Sensitivity rose.", "higher"),
-            ("Specificity fell.", "lower"),
-            ("The error was greater.", "higher"),
-            ("敏感性上升。", "higher"),
-            ("特异性下降。", "lower"),
+            ("The rate doubled [@smith2024].", "higher"),
+            ("Sensitivity rose [@smith2024].", "higher"),
+            ("Specificity fell [@smith2024].", "lower"),
+            ("The error was greater [@smith2024].", "higher"),
+            ("敏感性上升 [@smith2024]。", "higher"),
+            ("特异性下降 [@smith2024]。", "lower"),
         )
         self.make_common()
         self.write("references.bib", "@article{smith2024, title={Example}}\n")
         for sentence, direction in examples:
             with self.subTest(sentence=sentence):
-                claim_text = sentence.rstrip(".。")
+                claim_text = sentence.rstrip(".。").replace(" [@smith2024]", "")
                 row = self.claim_row(claim_text, "smith2024", "local:smith")
                 row.update({"section": "preamble", "claim_type": "directional", "direction": direction})
                 self.write_csv("claim_ledger.csv", audit.CLAIM_LEDGER_COLUMNS, [row])
@@ -1581,14 +1583,16 @@ AI did not replace human decisions.
         self.assertEqual([], findings)
         self.assertFalse(assessed)
 
-    def test_uncited_regulatory_or_priority_claim_is_a_ledger_candidate(self):
+    def test_uncited_regulatory_or_priority_claim_requires_a_citekey(self):
+        # 第三轮评审 MIR-02：正文无内联 citekey 的实质主张可由指向任意来源的
+        # ledger 行完成"三方"绑定——三角链只剩两角。现在直接报 critical。
         self.make_common()
         body = source_lines(
             "This was the first commercially available system cleared for clinical use."
         )
         findings, assessed = audit.scan_claim_ledger(body, self.project)
         self.assertFalse(assessed)
-        self.assertEqual("unverified_claim", findings[0].category)
+        self.assertEqual("claim_without_citekey", findings[0].category)
 
     def test_project_working_draft_rejects_numeric_and_inline_bibliography(self):
         self.make_common()
@@ -1837,5 +1841,116 @@ class CliAndSchemaTests(unittest.TestCase):
         self.assertIn("style.vendor_placement", result["not_assessed_checks"])
 
 
+class Round3AuditHardeningTests(unittest.TestCase):
+    """第三轮设计评审（MIR-01..06）六处审计器修复的回归锁。"""
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.project = Path(self.tempdir.name) / "example-20260723-120000-acde1234"
+        self.project.mkdir()
+
+    def tearDown(self):
+        self.tempdir.cleanup()
+
+    write = ProjectGateTests.write
+    write_csv = ProjectGateTests.write_csv
+    config_text = ProjectGateTests.config_text
+    disclosure_text = staticmethod(ProjectGateTests.disclosure_text)
+    make_common = ProjectGateTests.make_common
+    claim_row = staticmethod(ProjectGateTests.claim_row)
+
+    def test_table_rows_and_bullet_items_stay_atomic(self):
+        """MIR-01：表格行/相邻要点曾被并成单一 ambiguous 候选（永久 critical）。"""
+        body = source_lines(
+            "| Study | Comparator | Metric | Value |\n"
+            "|---|---|---|---|\n"
+            "| Wang 2023 [@wang2023] | nnU-Net | Dice | 0.85 |\n"
+            "| Li 2024 [@li2024] | UNet | AUC | 0.91 |\n"
+            "- Dice of 0.85 [@wang2023].\n"
+            "- Sensitivity of 0.92 [@li2024].\n"
+        )
+        candidates = audit.claim_candidates(body)
+        kinds = [candidate.kind for candidate in candidates]
+        self.assertNotIn("ambiguous", kinds)
+        quantitative = [c for c in candidates if "quantitative" in c.kind]
+        self.assertEqual(4, len(quantitative), [c.text for c in candidates])
+        self.assertEqual(
+            {"@wang2023", "@li2024"}, {cid for c in quantitative for cid in c.citation_ids}
+        )
+
+    def test_route_drift_without_a_documented_deviation_is_a_problem(self):
+        """MIR-03：路由降级换皮躲人工 gate——REVIEW_CONTEXT 记录与 config 交叉核对。"""
+        self.make_common("narrative")
+        self.write("REVIEW_CONTEXT.md", "# Context\n\n- Route: `systematic`\n")
+        problems = audit.validate_project_config("narrative", self.project, formal=False)
+        self.assertTrue(any("route drift" in problem for problem in problems))
+
+        self.write(
+            "protocol_deviations.md",
+            "# Deviations\n\n2026-10-10: route systematic -> narrative after human sign-off.\n",
+        )
+        problems = audit.validate_project_config("narrative", self.project, formal=False)
+        self.assertFalse(any("route drift" in problem for problem in problems))
+
+    def test_leading_dot_decimals_are_quantitative(self):
+        """MIR-04：.85/.9 前导点小数曾以 factual 过审并跳过全部数值检查。"""
+        for sentence in (
+            "The model achieved an AUC of .85 [@k].",
+            "The Dice coefficient exceeded .9 [@k].",
+        ):
+            with self.subTest(sentence=sentence):
+                kinds = [c.kind for c in audit.claim_candidates(source_lines(sentence))]
+                self.assertTrue(any("quantitative" in kind for kind in kinds), kinds)
+
+    def test_ai_like_reviewer_ids_catch_version_suffixed_model_names(self):
+        """MIR-05：gpt4/chatgpt/claude3 曾因「token 后必须分隔符」漏网。"""
+        for machine in ("gpt4", "chatgpt", "claude3", "gpt-4o-mini", "llm", "gemini-pro"):
+            with self.subTest(identifier=machine):
+                self.assertTrue(audit.ai_like_reviewer_id(machine))
+        for human in ("Botha", "Abbott", "botanist", "wang-lin"):
+            with self.subTest(identifier=human):
+                self.assertFalse(audit.ai_like_reviewer_id(human))
+
+    def test_synthesis_claim_rows_cover_factual_candidates(self):
+        """MIR-06：按 TEMPLATES 合法填写的 synthesis 行曾在审计器永不可满足。"""
+        self.make_common()
+        self.write("references.bib", "@article{smith2024, title={Example}}\n")
+        sentence = "Deep-learning systems are now widely deployed in reading rooms [@smith2024]."
+        row = self.claim_row(
+            "Deep-learning systems are now widely deployed in reading rooms",
+            "smith2024",
+            "local:smith",
+        )
+        row.update({"section": "preamble", "claim_type": "synthesis"})
+        self.write_csv("claim_ledger.csv", audit.CLAIM_LEDGER_COLUMNS, [row])
+        findings, assessed = audit.scan_claim_ledger(source_lines(sentence), self.project)
+        self.assertEqual([], findings)
+        self.assertTrue(assessed)
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class RouteBannedPhraseTests(unittest.TestCase):
+    def test_narrative_body_with_systematic_vocab_flags_medium(self):
+        """第三轮评审 MIR-09：narrative/method-survey 的禁用语此前只在
+        title/abstract 的路由推断里查，正文零检查。"""
+        body = source_lines(
+            "# A Narrative Review\n\n## Findings\n\n"
+            "We performed a comprehensive search and report the PRISMA flow "
+            "across included studies [@a]."
+        )
+        findings = audit.scan_route_banned_phrases("narrative", body)
+        labels = [f.message for f in findings]
+        self.assertTrue(any("comprehensive search" in label for label in labels))
+        self.assertTrue(any("PRISMA" in label for label in labels))
+        self.assertTrue(any("included studies" in label for label in labels))
+        self.assertTrue(all(f.severity == "medium" for f in findings))
+
+    def test_systematic_route_is_not_scanned_for_banned_phrases(self):
+        body = source_lines(
+            "# A Systematic Review\n\n## Results\n\n"
+            "The PRISMA flow across included studies is shown [@a]."
+        )
+        self.assertEqual([], audit.scan_route_banned_phrases("systematic", body))

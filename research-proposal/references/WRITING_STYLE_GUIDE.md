@@ -443,7 +443,7 @@ generalizability of these systems across diverse patient populations.
 - Introduction: Moderate (support key claims)
 - Literature Review: High (comprehensive coverage)
 - Methodology: Low-Moderate (cite established methods)
-- Discussion: Moderate (compare with prior work)
+- Significance: Moderate (compare with prior work)
 
 ### Synthesizing Multiple Sources
 

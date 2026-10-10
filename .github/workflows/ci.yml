@@ -80,4 +80,44 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24" # native TS type-stripping for importing the .ts source in tests
+      - name: Install node deps for merge tests
+        working-directory: paper-slide-deck/scripts
+        run: npm ci
       - run: node --test tests/*.mjs
+
+  research-paper:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: research-paper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest
+      - run: python -m pytest tests/ -q
+
+  research-proposal:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: research-proposal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest
+      - run: python -m pytest tests/ -q
+
+  repo-contract:
+    # 跨 skill 共享层：citation-core 注册表/派生标记/旗标分类/README 数量声明
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest
+      - run: python -m pytest tests/ -q

@@ -260,9 +260,11 @@ to [justification] because [reasons].
 
 ### 2.2 Historiography / State of the Field
 
-Scholarly attention to [topic] has evolved considerably over the past
-[timeframe]. Early studies, such as [Author (Year)], focused primarily
-on [aspect], establishing [finding/interpretation].
+Anchor the opening in specific scholars and works, not elapsed time:
+[Author (Year)]'s [work] established [finding/interpretation] for [topic];
+[Author (Year)] reframed the question around [aspect]. (Do not open with
+time-lapse lines of the "over-the-past-[timeframe]" family — the Phase 5
+AI-tell gate bans them.)
 
 The field underwent significant transformation with [Author (Year)]'s
 influential work, which challenged [previous assumption] by demonstrating

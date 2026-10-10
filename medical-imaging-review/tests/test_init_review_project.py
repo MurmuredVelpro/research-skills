@@ -228,5 +228,23 @@ class InitReviewProjectTests(unittest.TestCase):
                         MODULE.initialize_project(Path(raw), "ccta-review", route)
 
 
+    def test_initializing_residue_is_reported_never_auto_deleted(self) -> None:
+        """第三轮评审 MIR-13 + codex 两轮：mkdir 与 rename 之间被硬杀会留下
+        .initializing-* 残骸。mtime 无法证明实例已退出（暂停的实例仍活着），
+        任何年龄阈值的自动清理都只是推迟误删——所以只报告，删除留给人工。"""
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            review_root = root / "review_project"
+            residue = review_root / ".initializing-leftover-deadbeef"
+            residue.mkdir(parents=True)
+            (residue / "review_config.yaml").write_text("junk", encoding="utf-8")
+
+            target = MODULE.initialize_project(
+                root, "ccta-review", "narrative", project_id=PROJECT_ID
+            )
+            self.assertTrue(target.exists())
+            self.assertTrue(residue.exists(), "残骸只报告不自动删除（删除是人工动作）")
+
+
 if __name__ == "__main__":
     unittest.main()

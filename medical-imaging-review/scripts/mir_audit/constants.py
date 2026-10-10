@@ -513,6 +513,9 @@ DIRECTIONAL_RE = re.compile(
 
 QUANTITATIVE_RE = re.compile(
     r"\b\d+(?:\.\d+)?\s*%|\b0\.\d+\b|"
+    # 前导点小数（.85/.9）：无前导 0 的写法与 0.85 同为量化证据，
+    # 漏检会让整句以 factual 过审并跳过全部数值一致性检查
+    r"(?<!\w)\.\d+\b|"
     r"\b(?:dice|auc|accuracy|sensitivity|specificity|hazard ratio|odds ratio|hr|or|p)\s*(?:=|:|of|was|is)?\s*\d|"
     r"\bmean\s+age\s+(?:was|is|=|:)\s*\d+(?:\.\d+)?\s*years?\b|"
     r"\bn\s*=\s*\d+\b|"

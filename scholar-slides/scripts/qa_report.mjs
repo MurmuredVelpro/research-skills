@@ -139,7 +139,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   qaReport(deckDir, sourceDir).then((findings) => {
     const { text, p0, p1 } = summarize(findings);
     console.log(text);
-    fs.writeFileSync(path.join(deckDir, "qa_report.json"), JSON.stringify(findings, null, 2));
+    // 数组上的非索引属性（_timing/_aesthetics）会被 JSON.stringify 静默丢弃——
+    // CKPT-3 的机器可读记录因此缺讲稿时长与美学均分。落盘为显式对象。
+    const timing = findings._timing ?? null;
+    const aesthetics = findings._aesthetics ?? null;
+    const rows = Array.from(findings);
+    fs.writeFileSync(
+      path.join(deckDir, "qa_report.json"),
+      JSON.stringify({ findings: rows, timing, aesthetics }, null, 2)
+    );
     process.exit(p0 ? 2 : p1 ? 1 : 0);
   }).catch((e) => { console.error(e); process.exit(3); });
 }

@@ -105,7 +105,7 @@ Export & charts — pipeline stage 7 (export = Node; charts = Python):
 - `make_chart.py` — chart spec → **data-bound** Okabe–Ito plot (values plotted verbatim).
 
 Tests: `./.venv/bin/python -m pytest` (Python) and
-`node --test tests/deck.test.mjs tests/qa.test.mjs tests/notes.test.mjs tests/pptx.test.mjs` (Node).
+`node --test tests/*.test.mjs` (Node — 逐个点名会静默漏跑新测试文件，用 glob).
 
 ## Learnings: read before changing pipeline behavior
 

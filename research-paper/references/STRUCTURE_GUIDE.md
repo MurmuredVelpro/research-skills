@@ -14,9 +14,13 @@
 
 ### Methods-forward vs. hypotheses-forward
 
-- **Engineering/ML papers** lead with the method: Introduction → Method →
-  Experiments (setup/results merged) → Discussion. Contribution claims are
-  testable by the experiments that follow.
+- **Engineering/ML papers** lead with the method. The full CS-venue order (matching
+  SKILL.md's routing table): Abstract → Introduction → Related Work → Method →
+  Experiments (setup/results may merge) → Discussion → Conclusion. No separate
+  conference scaffold: start from `assets/paper_scaffold_en.md`, promote its
+  related-work material to a top-level section after the Introduction, and keep
+  Discussion before Conclusion. Contribution claims are testable by the
+  experiments that follow.
 - **Clinical/observational papers** lead with the question: Introduction →
   hypothesis → Methods → Results → Discussion. The STROBE checklist drives
   Methods completeness.
@@ -53,6 +57,6 @@ Numbers carry dispersion/CI where the data support it; exact values from
 
 ## 中文论文的对应关系
 
-引言/方法/结果/讨论/结论对应同一条脊柱；注意：学号制期刊多用 GB/T 7714
+引言/方法/结果/讨论/结论对应同一条脊柱；注意：国内期刊（学报类）多用 GB/T 7714
 顺序编码制（正文 `[1]`），学位论文按学校模板——写作前确认制式并在全文保持
 一致（两制混排是实测过的错误形态）。

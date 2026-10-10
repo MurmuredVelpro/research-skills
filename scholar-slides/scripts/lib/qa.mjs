@@ -25,6 +25,12 @@ export function collectFields(deck) {
     add("title", s.title);
     add("note", s.note);
     add("annotation", s.annotation);
+    // eyebrow / two-column text / equations[].latex 都会渲染上屏（layouts.mjs），
+    // 不收集就让这些字段里的数字静默绕过接地——math.md 明说公式里的数字
+    // 同任何数字一样接地
+    add("eyebrow", s.eyebrow);
+    add("text", s.text);
+    (s.equations || []).forEach((e, j) => add(`equations[${j}].latex`, e.latex));
     (s.points || []).forEach((p, j) => {
       if (typeof p === "string") add(`points[${j}]`, p);
       else { add(`points[${j}].head`, p.head); add(`points[${j}].body`, p.body); }

@@ -1,0 +1,24 @@
+# RP-01 红→绿证据（追溯性补录）
+
+- 录制 commit: e6738b3（工作树内临时回退/复原；审计员指出原始红跑未落盘）
+- 录制时间: 2026-10-10T03:29:04Z
+- 引擎: 契约测试内为真实 grep（/usr/bin/grep），非 Python re
+
+## 1. 两处正则回退为缺陷形态 `\[UNVERIFIED\]`（裸旗标全词）
+
+```
+=========================== short test summary info ============================
+SUBFAILED(file='SKILL.md', engine='/usr/bin/grep') tests/test_document_contract.py::PlaceholderGateContract::test_gate_matches_the_documented_colon_flag_form
+SUBFAILED(file='references/QUALITY_CHECKLIST.md', engine='/usr/bin/grep') tests/test_document_contract.py::PlaceholderGateContract::test_gate_matches_the_documented_colon_flag_form
+2 failed, 7 passed, 6 subtests passed in 0.08s
+
+```
+exit 1（红：冒号形旗标被门禁放走）
+
+## 2. 复原为 `\[UNVERIFIED[^]]*\]` 后
+
+```
+
+7 passed, 8 subtests passed in 0.04s
+```
+exit 0（绿）

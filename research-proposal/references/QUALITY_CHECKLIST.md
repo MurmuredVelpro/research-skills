@@ -62,7 +62,7 @@ Use this checklist to verify the quality of generated research proposals.
 - [ ] **Every reference verified to exist** — DOI/PMID/arXiv resolves, or Zotero metadata confirms it (Rule 1)
 - [ ] **First author and year match the source** for every entry (Rule 2)
 - [ ] No fabricated or padded references; **count follows the argument, no minimum** (typically 25–50, humanities often more)
-- [ ] No placeholder strings — `grep` for `xxx`, `[TBD]`, `10.xxxx` returns 0; any `[UNVERIFIED]` was disclosed to the user, never presented as confirmed
+- [ ] No placeholder strings — the **canonical gate regex in SKILL.md Phase 5** (placeholder gate) returns 0; any `[UNVERIFIED]` was disclosed to the user, never presented as confirmed. Do not re-transcribe the pattern here — a shrunken copy drifts.
 - [ ] Every in-text `(Author, Year)` has a matching References entry, and every entry is cited (no orphans either direction) (Rule 3)
 - [ ] Every quantitative/directional claim matches its source; ≥20% of references spot-checked (Rule 4)
 - [ ] Primary sources cited for findings, not blogs / press releases / other reviews (Rule 5)

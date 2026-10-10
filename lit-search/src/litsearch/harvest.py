@@ -268,10 +268,13 @@ async def harvest(
         done = [item for item in previous["outcomes"] if item["status"] == "complete"]
         for item in done:
             manifest.outcomes.append(QueryOutcome(**item))
+        # 沿用的记录必须读全部 records*.jsonl：阶段补全（顶会/整卷/滚雪球）与
+        # 主采集同为一界语料。只读主文件会让已提交的阶段记录在续跑后凭空蒸发，
+        # 而阶段结局又被抄进 manifest——召回证据静默少算且无告警。
         carried = [
-            Record.model_validate(row)
-            for row in resume_from.read_jsonl("records.jsonl")
-            if not set(row.get("found_by") or []) & retry_hashes
+            record
+            for record in read_all_records(resume_from)
+            if not set(record.found_by or []) & retry_hashes
         ]
         queries = [query for query in queries if query.query_hash in retry_hashes]
         manifest.notes.append(

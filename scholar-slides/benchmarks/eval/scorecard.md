@@ -38,7 +38,11 @@ Scored on rendered pixels against the 6-dimension rubric. **Caveat: this is a se
 builder — directional, not a blind rating.** Each score is justified by concrete before/after
 evidence (the audit + screenshots across M1–M4). True calibration needs the external raters below.
 
-**PANDA journal-club deck (`out/pancreatic`):**
+> The two decks below were scored on the **retired PANDA corpus** (`out/pancreatic*`, since
+> replaced by the redistributable arXiv seeds in `benchmarks/manifest.json`); kept as the
+> M1→M4 development history.
+
+**PANDA journal-club deck (`out/pancreatic`, retired corpus):**
 
 | dimension | M1 baseline | after M4 | what moved it |
 |-----------|:-----------:|:--------:|---------------|
@@ -50,7 +54,7 @@ evidence (the audit + screenshots across M1–M4). True calibration needs the ex
 | Consistency & finish | 3 | 4 | one system via tokens/base-theme; PPTX parity verified |
 | **total** | **~15 / 24** | **~22 / 24** | |
 
-**PANDA conference cut (`out/pancreatic_conf`):** ~23/24 — same gains plus 0% bullets, section-divider
+**PANDA conference cut (`out/pancreatic_conf`, retired corpus):** ~23/24 — same gains plus 0% bullets, section-divider
 rhythm, and full-bleed cover/dividers give hierarchy 4 and space 4.
 
 The biggest single lever was **Figures** (1.5 → 3.5): the M2 furniture-strip + panel extraction turned
@@ -63,8 +67,8 @@ The biggest single lever was **Figures** (1.5 → 3.5): the M2 furniture-strip +
 I cannot generate Gamma / Canva AI / Copilot decks here (no accounts). When you export them, this
 protocol makes the comparison rigorous:
 
-1. **Same inputs.** Feed each tool the *same* 3–5 benchmark papers (start with the PANDA paper and
-   the Transformer paper — both in `benchmarks/manifest.json`).
+1. **Same inputs.** Feed each tool the *same* 3–5 benchmark papers (start with the current
+   seeds in `benchmarks/manifest.json` — e.g. the Attention and DeepSeek-V3.2 papers).
 2. **Anonymize.** Render every deck (ours + each competitor) to PDF → PNG per slide; strip tool
    branding/footers; assign random deck IDs. Raters must not know which tool made which.
 3. **Raters.** ≥3 independent raters, ideally domain readers (someone who runs journal clubs). Each

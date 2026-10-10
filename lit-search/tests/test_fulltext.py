@@ -304,3 +304,33 @@ class TestReporting:
 
         assert "Open one" not in csv
         assert "Needs TDM" in csv
+
+
+class TestResolverFailureVisibility:
+    def test_a_source_error_counts_instead_of_vanishing(self):
+        """实测事故（第三轮评审 LS-10）：except SourceError: return [] 把
+        解析器故障折叠成「暂无可用途径」——服务故障被伪装成付费墙。"""
+        import asyncio
+
+        from litsearch.fulltext import (
+            RESOLVER_FAILURES,
+            EuropePMCResolver,
+            resolver_failure_report,
+        )
+        from litsearch.sources.base import HttpClient, SourceError
+
+        class BoomClient(HttpClient):
+            def __init__(self) -> None:
+                pass  # 只覆盖 get_json，不触碰限速/退避构造
+
+            async def get_json(self, *args, **kwargs):
+                raise SourceError("europepmc", "503 quota gone")
+
+        RESOLVER_FAILURES.clear()
+        record = CanonicalRecord(
+            key="doi:10.1/x", title="T", identifiers={"doi": "10.1/x"}
+        )
+        found = asyncio.run(EuropePMCResolver().resolve(record, BoomClient()))
+        assert found == []
+        assert RESOLVER_FAILURES.get("europepmc") == 1
+        assert any("europepmc" in line for line in resolver_failure_report())

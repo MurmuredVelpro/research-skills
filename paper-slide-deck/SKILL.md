@@ -40,6 +40,11 @@ where the `pdfjs` + `canvas` path in `extract-figure.ts` fails with
 `Error: Image or Canvas expected`. For medical-imaging papers this is the common case,
 not the exception, so treat PyMuPDF as required, not optional.
 
+**Also install Pillow** (`pip install Pillow`) — when Gemini returns `image/webp`,
+every slide goes through a Pillow conversion to PNG; without it each image errors with
+"converting it needs Pillow (pip install Pillow)" until installed. Treat it as required
+alongside PyMuPDF.
+
 ### Image generation & no-API-key path
 
 Image generation needs either a `GOOGLE_API_KEY`/`GEMINI_API_KEY` (Gemini API) or the
@@ -162,7 +167,9 @@ Multiple sources supported: text, images, files from conversation.
 
 ### Step 2: Generate Outline Variants
 
-1. Generate 3 style variant outlines based on content analysis
+1. If the user explicitly passed `--style <name>`, use that style directly and skip the
+   variant question below (asking again after an explicit choice is noise). Otherwise,
+   generate 3 style variant outlines based on content analysis
 2. Follow `references/outline-template.md` for structure
 3. **Auto-populate IMAGE_SOURCE** for academic papers:
    - Read `figures.json` from Step 1
@@ -180,7 +187,7 @@ Multiple sources supported: text, images, files from conversation.
 
 | Question | When to Ask |
 |----------|-------------|
-| Style variant | Always (3 options + custom) |
+| Style variant | Only when `--style` was NOT passed (3 options + custom); an explicit `--style` is the answer |
 | Language | Only if source ≠ user language |
 
 After selection:
@@ -226,7 +233,7 @@ no-key path from the Setup section (`--outline-only` + extraction + prompts hand
 
 **Script behavior** (details in the script docstring):
 - Auto-installs `google-genai`; **errors out (non-zero) if no prompt files are found**
-- Retries failed generations with exponential backoff (3 attempts total)
+- Retries failed generations with backoff (3 attempts total, 10s/15s linear)
 - Skips already-generated slides (> 10KB, any image extension)
 - Writes each slide to the **deck root** — the same place extracted-figure slides
   land, so one merge step picks up both
@@ -306,9 +313,9 @@ Then apply template using `apply-template.ts`.
 
 Text-to-image **bakes text into pixels and will garble spelling, math symbols, and
 numbers** — this is the single biggest risk of this skill. Do not ship unchecked.
-(This is this skill's instance of the repository's shared citation-integrity core:
-numbers and claims must match the source, and failures surface as visible flags —
-never silent substitutes.)
+(This is this skill's instance of the repository's shared citation-integrity core
+[`docs/citation-integrity-core.md`]: numbers and claims must match the source, and
+failures surface as visible flags — never silent substitutes.)
 
 **For every generated slide** (especially any with equations, tables, key numbers,
 or non-Latin text), use `Read` to open the PNG and visually check:
@@ -423,4 +430,4 @@ Read **only** the reference file for the stage you are in — never glob `refere
 ### Content Guidelines
 
 - Use stylized alternatives for sensitive public figures
-- Both methods use the same underlying Gemini model for image generation
+- Both paths are Gemini image models, but the Web path's model version is not controlled by you — it follows Google's deployment and can drift from the API path

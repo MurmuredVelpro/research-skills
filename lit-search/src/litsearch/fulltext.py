@@ -57,6 +57,25 @@ class FullTextLocation(BaseModel):
         )
 
 
+#: 解析器故障计数：「解析器挂了」必须与「确无合法 OA」可区分——
+#: except SourceError: return [] 把两者折算成同一张空表，institutional_access.csv
+#: 随之把服务故障伪装成付费墙（LS-10）
+RESOLVER_FAILURES: dict[str, int] = {}
+
+
+def _record_failure(resolver_name: str) -> None:
+    RESOLVER_FAILURES[resolver_name] = RESOLVER_FAILURES.get(resolver_name, 0) + 1
+
+
+def resolver_failure_report() -> list[str]:
+    """人类可读的故障行；空列表 = 无故障。"""
+    return [
+        f"{name}: {count} 次解析失败（服务故障或配额耗尽）——"
+        f"这些记录的 unavailable/tdm 判定不可信，排除故障后应重跑"
+        for name, count in sorted(RESOLVER_FAILURES.items())
+    ]
+
+
 class Resolution(BaseModel):
     """一条记录的全文可获取性结论。"""
 
@@ -102,6 +121,7 @@ class UnpaywallResolver:
                 f"{UNPAYWALL}/{doi}", {"email": self.email}, source=self.name
             )
         except SourceError:
+            _record_failure(self.name)
             return []
         if not isinstance(payload, dict) or not payload.get("is_oa"):
             return []
@@ -141,6 +161,7 @@ class EuropePMCResolver:
                 source=self.name,
             )
         except SourceError:
+            _record_failure(self.name)
             return []
 
         results = (payload.get("resultList") or {}).get("result") or []
@@ -211,6 +232,7 @@ class CrossrefTdmResolver:
                 f"{CROSSREF}/{doi}", {"mailto": self.email}, source=self.name
             )
         except SourceError:
+            _record_failure(self.name)
             return []
         message = payload.get("message") or {}
         return [

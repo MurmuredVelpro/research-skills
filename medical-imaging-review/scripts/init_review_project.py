@@ -578,6 +578,19 @@ def initialize_project(
     if target.exists() or target.is_symlink():
         raise ProjectInitError(f"refusing to overwrite existing path: {target}")
 
+    # 被硬杀（SIGKILL）遗留的陈旧 staging：except 分支只清本次的，mkdir 与
+    # rename 之间被杀会留下隐藏目录，此前既不识别也不清理。只**报告**不自动
+    # 删除——mtime 无法证明那个实例已经退出（暂停 >15 分钟的实例仍是活的，
+    # 任何年龄阈值都只是推迟误删；自动清理需进程锁，超出本脚本的重量级）。
+    # 删除留给明确的人工动作。
+    residues = sorted(p.name for p in review_root.glob(".initializing-*"))
+    if residues:
+        print(
+            "注意：发现历史遗留的初始化 staging（可能来自被中断的运行）：\n  "
+            + "\n  ".join(residues)
+            + "\n确认无并发初始化在进行后，可手动删除它们。"
+        )
+
     staging = review_root / f".initializing-{resolved_id}-{uuid.uuid4().hex[:8]}"
     staging.mkdir(exist_ok=False)
     try:

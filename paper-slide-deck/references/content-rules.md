@@ -90,4 +90,4 @@ Throughout the deck:
 | `corporate` | Navy/gold, structured layouts, business polish |
 
 Full style specifications: `references/styles/<style>.md` (17 styles — see the Style
-Gallery in SKILL.md for the complete list).
+Gallery in `references/style-selection.md` for the complete list).

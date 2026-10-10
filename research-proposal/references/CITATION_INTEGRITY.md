@@ -1,5 +1,10 @@
 # Citation Integrity Protocol
 
+Derived from `docs/citation-integrity-core.md` at development time (convention:
+(Author, Year) / GB/T 7714 顺序编码制; this copy ships self-contained). Variant-specific
+machinery — the (Author, Year) reconciliation regex and the Phase 2/5 gate wiring — lives
+here, not in the core.
+
 This is the most important reference file in the skill. Citation fabrication / drift is the #1 failure mode of LLM-drafted research proposals. A proposal that reaches an admissions committee, supervisor, or funding panel with a fabricated reference is not a stylistic slip — it is an **academic-integrity violation** that can end an application.
 
 This protocol adapts the discipline of the sister skill `medical-imaging-review` to the **author–year (Author, Year)** citation convention used in proposals (APA / MLA / Chicago / GB/T 7714), not the numbered `[N]` convention of review manuscripts. Both are variants of the shared five-rule core reconciled at development time in the repository's `docs/citation-integrity-core.md` — conventions differ, the rules do not.
@@ -27,7 +32,7 @@ Never invent a DOI, a journal name, a volume/issue, or page numbers to make a re
 # Placeholder / stub markers that must never survive to delivery.
 # Canonical version lives in SKILL.md Phase 5 (citation gate) — keep the two in
 # sync when editing; this file links to it rather than diverging again.
-grep -nE "xxx|XXXX|\[TBD\]|\[UNVERIFIED[^\]]*\]|10\.xxxx|doi:10\.[a-z]+/x|forthcoming DOI|\[.*占位.*\]" proposal_draft.md
+grep -nE "xxx|XXXX|\[TBD\]|\[UNVERIFIED[^]]*\]|10\.xxxx|doi:10\.[a-z]+/x|forthcoming DOI|\[.*占位.*\]" proposal_{topic_slug}_{YYYY-MM-DD}.md
 ```
 
 Expected at delivery: 0 hits, OR every `[UNVERIFIED]` explicitly disclosed to the user and never presented as a confirmed source.
@@ -50,7 +55,7 @@ Padding a bibliography to hit a number is the single most common way LLM-drafted
 
 ## Rule 2: Author and year must match the source
 
-For every reference, the **first author's surname** and the **publication year** that appear in the in-text citation `(Author, Year)` must match the first source verbatim. For 3+ authors using `(Author et al., Year)`, the first author and year must still be exact.
+For every reference, the **first author's surname**, the **publication year**, and the **venue as printed in the References entry** must match the first source verbatim (the shared core's Rule 2 covers all three; venue drifts silently when only authors/year are checked). For 3+ authors using `(Author et al., Year)`, the first author and year must still be exact.
 
 ### LLM failure mode
 
@@ -80,10 +85,15 @@ In author–year style there are two failure directions, both of which must be z
 ### Detection
 
 ```bash
-# In-text citations (rough pass — author-year parenthetical)
-grep -noE "\([A-Z][A-Za-z]+( et al\.| & [A-Z][A-Za-z]+)?,? [0-9]{4}[a-z]?\)" proposal_draft.md
+# In-text citations, author-year styles (rough pass)
+grep -noE "\([A-Z][A-Za-z]+( et al\.| & [A-Z][A-Za-z]+)?,? [0-9]{4}[a-z]?\)" proposal_{topic_slug}_{YYYY-MM-DD}.md
 
-# Cross-check every parenthetical author-year against the References section by hand.
+# In-text citations, GB/T 7714 numeric styles (the Chinese default) — every
+# [N]/[N-M]/[N, M] must appear in the numbered References list, and every
+# number in the list must be cited at least once:
+grep -noE "\[[0-9]{1,3}(-[0-9]{1,3})?(,[ ]?[0-9]{1,3})*\]" proposal_{topic_slug}_{YYYY-MM-DD}.md
+
+# Cross-check every citation against the References section by hand.
 ```
 
 Every in-text `(Author, Year)` must have exactly one References entry, and every References entry must be cited at least once. Same-author-same-year collisions get `2023a` / `2023b` suffixes consistently in both places.

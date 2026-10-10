@@ -185,3 +185,59 @@ class TestResume:
                 Credentials(),
                 resume_from=first,
             )
+
+    @respx.mock
+    async def test_resume_carries_committed_stage_records(
+        self, topic, topic_path, tmp_path
+    ):
+        """实测事故（第三轮评审 LS-01）：续跑只读主采集 records.jsonl，
+        已提交的阶段补全（顶会/整卷/滚雪球，records_<stage>.jsonl）从语料
+        凭空蒸发，而阶段结局却被抄进新 manifest——find_gaps 看不出缺口，
+        PRISMA 识别数按记录文件统计而静默少算。"""
+        first = await _first_run(topic, topic_path, tmp_path)
+        main = first.read_jsonl("records.jsonl")
+        assert main
+
+        # 模拟一次已提交的阶段补全：两条独立的新论文，found_by 是阶段检索式
+        stage_rows = []
+        for seq, row in enumerate(main[:2]):
+            clone = dict(row)
+            clone["source_id"] = f"stage3-{seq}"
+            clone["title"] = f"Stage-three补全论文 {seq}"
+            clone["identifiers"] = {"doi": f"10.55555/stage3.{seq}"}
+            clone["found_by"] = ["stage3-hash-0001"]
+            stage_rows.append(clone)
+        first.write_jsonl("records_stage3.jsonl", stage_rows)
+
+        respx.get("https://api.openalex.org/works").mock(return_value=_empty_openalex())
+        respx.get("https://www.ebi.ac.uk/europepmc/webservices/rest/search").mock(
+            side_effect=[
+                _europepmc_ok(),
+                _empty_europepmc(),
+                _europepmc_ok(),
+                _empty_europepmc(),
+            ]
+        )
+
+        second = Run.create(tmp_path / "runs", topic.id, run_id="staged")
+        report = await harvest(
+            topic,
+            topic_path,
+            second,
+            Credentials(contact_email="t@example.com"),
+            resume_from=first,
+        )
+
+        merged = second.read_jsonl("records.jsonl")
+        merged_dois = {
+            doi
+            for row in merged
+            for doi in (row.get("identifiers") or {}).get("doi", "").split()
+        }
+        for seq in range(len(stage_rows)):
+            assert f"10.55555/stage3.{seq}" in merged_dois, (
+                "已提交的阶段记录不该因为续跑而从语料消失"
+            )
+        assert report.manifest.counts["records_fetched"] == len(merged), (
+            "records_fetched 应按实际记录文件统计，阶段贡献不能静默少算"
+        )

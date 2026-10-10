@@ -32,7 +32,11 @@ Use when the user did not pass `--style`. Match content signals in order; fall b
 
 | Content Signals | Selected Style |
 |-----------------|----------------|
-| paper, thesis, defense, conference, ieee, acm, icml, neurips, cvpr, acl, aaai, iclr | `academic-paper` |
+| paper, thesis, ieee, acm, icml, neurips, cvpr, acl, aaai, iclr | `academic-paper` |
+
+> Routing note: content mentioning defense/conference can still pick this **visual style**,
+> but if the user needs a live, projector-ready talk with exact math and numbers, route to
+> the scholar-slides skill instead of this one.
 | tutorial, learn, education, guide, intro, beginner | `sketch-notes` |
 | classroom, teaching, school, chalkboard, blackboard | `chalkboard` |
 | architecture, system, data, analysis, technical | `blueprint` |

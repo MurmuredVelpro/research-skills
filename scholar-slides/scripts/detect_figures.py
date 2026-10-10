@@ -363,14 +363,16 @@ def _content_rects(page):
     for the figure/table region grower.
     """
     rects = [b["bbox"] for b in _page_text_blocks(page)]
+    pw = page.rect.width
+    # 拿不到图片/矢量信息时出声而不静默清空：纯矢量图形的定位失败会
+    # 全部落到 low-confidence flag，排障者需要知道候选是被跳过的、不是没有
     try:
         for im in page.get_image_info(xrefs=False):
             bb = im.get("bbox")
             if bb:
                 rects.append(tuple(bb))
-    except Exception:
-        pass
-    pw = page.rect.width
+    except Exception as exc:  # PyMuPDF 版本差异大，接口缺失/损坏页都见得到
+        print(f"WARN: get_image_info failed on page {page.number}: {exc}")
     try:
         for dr in page.get_drawings():
             r = dr["rect"]
@@ -380,8 +382,8 @@ def _content_rects(page):
             if w > 0.9 * pw and h < 3:      # full-width horizontal rule
                 continue
             rects.append((r.x0, r.y0, r.x1, r.y1))
-    except Exception:
-        pass
+    except Exception as exc:
+        print(f"WARN: get_drawings failed on page {page.number}: {exc}")
     return rects
 
 

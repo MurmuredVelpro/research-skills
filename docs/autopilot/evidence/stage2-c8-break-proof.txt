@@ -1,0 +1,26 @@
+# C8 破坏性验证 — machine gate 会红
+
+- commit under test: efc2af2
+- recorded: 2026-10-10T02:21:29Z
+
+## 1. 把 LS-01 修复回退为缺陷形态（harvest.py carried 只读 records.jsonl）
+
+命令: python3 就地回退 -> cd lit-search && uv run pytest tests/test_harvest_resume.py -q
+
+exit 1（红）
+
+```
+tests/test_harvest_resume.py:238: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_harvest_resume.py::TestResume::test_resume_carries_committed_stage_records
+```
+
+## 2. git checkout 恢复修复后重跑
+
+exit 0（绿）
+
+```
+.....                                                                    [100%]
+```
+
+结论：新增回归测试对旧缺陷必然变红，gate 不是永绿摆设。工作树已恢复干净（git status 空）。

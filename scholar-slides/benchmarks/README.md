@@ -45,9 +45,14 @@ regression signal. P1 (REVIEW) and P3 (nudges) are reported, not failed.
 
 ## The current set (seed)
 
-Seven real decks across register and language (see `manifest.json`): a Transformer NLP deck
-(equation + real BLEU table), and the PANDA medical paper in three forms — English journal-club,
-中文 journal-club (CJK), and a conference-theme cut (0% bullets, section rhythm).
+Seven real decks across register and language (see `manifest.json`): the Attention/Transformer
+paper (equation + real BLEU table); DeepSeek-V3.2 as a journal-club deck and a conference re-cut
+(0% bullets, section rhythm, dark dividers); GLM-5 in English and 中文 (CJK); an xLSTM deck
+(4 hero figures, native parity re-plot); and a 中文 smoke deck for CJK typography.
+
+> History: an earlier corpus centered on a PANDA medical paper (`out/pancreatic*`) — those
+> decks were retired when the seeds moved to redistributable arXiv papers (see Seed policy);
+> old eval write-ups may still name them.
 
 ## Seed policy (toward a fully reproducible corpus)
 

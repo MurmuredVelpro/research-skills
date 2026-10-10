@@ -40,6 +40,8 @@ positions against — no padding, no citation-swap to game reference count.
 
 Every in-text citation has exactly one bibliography entry, and every entry is
 cited (or deliberately included per venue norm — state which). For
-author–year styles a quick `grep -oE "\([A-Z][a-zA-Z]+ et al\., [0-9]{4}\)"`
-spot-list helps; for numeric styles the outline-to-reference map in
+author–year styles a quick `grep -oE "\([A-Z][a-zA-Z]+( et al\.| and [A-Z][a-zA-Z]+)?, [0-9]{4}[a-z]?\)"`
+spot-list helps (covers `(Smith, 2024)`, `(Smith and Jones, 2024)`, and
+`(Smith et al., 2024)` — grep is a sample, not the census; reconcile the rest
+by reading); for numeric styles the outline-to-reference map in
 `paper_plan.md` is the audit trail.

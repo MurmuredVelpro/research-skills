@@ -36,6 +36,8 @@ than one fake. Count follows the argument; there is no quota and no padding.
 Literal markers the gates scan for (each variant uses the subset that applies):
 
 - `[UNVERIFIED: …]` — a citation or value could not be resolved against a first source.
+- `[PENDING: …]` — a load-bearing number the user has not supplied yet (research-paper's
+  results-first discipline: `[PENDING]`, never a plausible fill).
 - `[MISSING: …]` — a referenced asset could not be extracted/located.
 - `[CHECK]` — a generated slide failed visual proofreading after retries.
 - `[REDRAWN]` / `[GENERATED]` — an asset is not from the source and is labeled as such.
@@ -53,8 +55,7 @@ A deliverable ships with flags **only** after the user has seen and accepted eac
 | research-paper | `references/CITATION_INTEGRITY.md` | journal styles (author–year or numeric per venue) | Phase 2 verification + Phase 5 grep gates & results_ledger reconciliation |
 
 Variant-specific extensions stay in the variant: the medical ledger's split/comparator/
-uncertainty columns, the proposal's (Author, Year) reconciliation regex, the slides' figure
-provenance rules, and the T2I garble protocol are **not** part of the core.
+uncertainty columns, the proposal's (Author, Year) reconciliation regex **and its secondary-source rule (Rule 6)**, the slides' figure provenance rules, and the T2I garble protocol are **not** part of the core.
 
 ## When a fifth variant appears
 

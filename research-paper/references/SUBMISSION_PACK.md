@@ -7,8 +7,9 @@ draft — no new claims appear for the first time in the cover letter.
 
 - Title: method + task + distinguishing claim; no filler ("A novel…" adds
   nothing — the novelty should be legible without the word).
-- Authors + affiliations + ORCID per venue; corresponding author; conflicts
-  statement; funding statement; data availability statement.
+- Authors + affiliations + ORCID per venue; corresponding author; **author
+  contributions (CRediT taxonomy roles per author)**; conflicts statement;
+  funding statement; data availability statement.
 
 ## Abstract in the venue's format
 

@@ -622,6 +622,11 @@ def load_ranked(rows: Iterable[Mapping]) -> list[RankedRecord]:
     ]
 
 
+def _tri_state(value: bool | None) -> str:
+    """Y=是，N=否，空=未评价——None 与 False 在 CSV 里必须可区分。"""
+    return "Y" if value else ("N" if value is not None else "")
+
+
 def ranked_csv(ranked: Sequence[RankedRecord]) -> str:
     """逐条标注的 CSV，供人工核对与下游过滤。"""
     import csv
@@ -659,8 +664,11 @@ def ranked_csv(ranked: Sequence[RankedRecord]) -> str:
                 f"{item.metric:.3f}" if item.metric is not None else "",
                 item.h_index or "",
                 item.cited_by_count if item.cited_by_count is not None else "",
-                "Y" if item.in_top_1_percent else "",
-                "Y" if item.in_top_10_percent else "",
+                # 三态显形：Y=是，N=否，空=未评价（OpenAlex 对零被引工作返回
+                # null percentile——「没有指标」不等于「指标低」，二者混同空串
+                # 正是本项目立过纪律的失败形态）
+                _tri_state(item.in_top_1_percent),
+                _tri_state(item.in_top_10_percent),
                 item.date_text or "",
                 item.journal_name or item.venue or "",
                 item.issn_l or "",

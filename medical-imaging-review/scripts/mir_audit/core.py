@@ -66,6 +66,7 @@ def audit_text(
     findings.extend(scan_vendor_mentions(body_lines, profile))
     findings.extend(scan_profile_layout(body_lines, profile))
     findings.extend(scan_unsupported_route_claims(body_lines))
+    findings.extend(scan_route_banned_phrases(route, body_lines))
     findings.extend(scan_structure(route, body_lines, ref_heading_found, references, citations, profile))
     findings.extend(scan_duplicate_dois(references))
     findings.extend(validate_working_manuscript_path(project_dir, manuscript_path))

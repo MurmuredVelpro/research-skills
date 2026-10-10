@@ -375,9 +375,13 @@ def yaml_field_is_resolved(section: str, key: str) -> bool:
 
 
 def ai_like_reviewer_id(identifier: str) -> bool:
+    # 词干匹配：模型名常带数字/版本后缀（gpt4、claude3、chatgpt），要求
+    # token 后紧跟分隔符会让最常见的写法漏网。bot 仍按全词匹配——
+    # \bbot\w* 会误伤 Botha 一类人名姓氏。
     return bool(
         re.search(
-            r"(?i)(?:^|[-_:])(gpt|claude|llm|bot|ai-agent|automation|gemini|copilot)(?:[-_:]|$)|@openai\b|@anthropic\b",
+            r"(?i)\b(?:gpt|chatgpt|claude|gemini|copilot|llm|automation)\w*"
+            r"|\bbot\b|\bai[-_ ]?agent\b|@openai\b|@anthropic\b",
             identifier,
         )
     )

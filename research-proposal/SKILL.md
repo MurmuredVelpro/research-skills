@@ -8,7 +8,8 @@ description: >
   proposal", "研究计划书", "开题报告", "写博士研究计划". The literature-corpus half
   of 开题报告 (exhaustive, reproducible retrieval with recall evidence) belongs
   to the lit-search skill; this skill consumes its outputs (dois.md /
-  references.bib). Not for backward-looking literature reviews / 综述 / surveys
+  references.md — the default formatted list; references.bib only when lit-search ran
+  with --bibtex). Not for backward-looking literature reviews / 综述 / surveys
   (use medical-imaging-review). For grant applications (国自然/NSF) it drafts and
   structures the CONTENT (立项依据/研究内容/…) but never fills a funder's own
   form system or budget tables.
@@ -30,7 +31,6 @@ allowed-tools:
   - mcp__zotero__zotero_get_item_fulltext
   - mcp__zotero__zotero_get_annotations
   - mcp__zotero__zotero_get_notes
-  - mcp__zotero__zotero_search_notes
   - mcp__zotero__zotero_semantic_search
   - mcp__zotero__zotero_advanced_search
 ---
@@ -60,7 +60,7 @@ The default structure below targets **PhD/doctoral proposals and academic resear
 | Request | Structure |
 |---|---|
 | PhD/doctoral proposal, research plan, 研究计划书 | Default structure (this skill) |
-| 开题报告 (thesis proposal / defense) | Default structure, but weight Literature Review and feasibility/existing-basis more heavily; keep methodology concrete |
+| 开题报告 (thesis proposal / defense) | Default structure, but weight Literature Review more heavily and open Methodology with a **研究基础/可行性分析 (existing basis & feasibility)** subsection — the reviewer's prior work, preliminary results, and access to data/compute; keep methodology concrete |
 | Humanities dissertation proposal | Default + a **Chapter Outline** section (see [references/DOMAIN_TEMPLATES.md](references/DOMAIN_TEMPLATES.md)) |
 | 基金申请书 / 国自然 / NSF grant | **Different structure** (立项依据 / 研究内容与目标 / 研究方案与可行性 / 研究基础与工作条件). This skill drafts the *content* adapted to the funder's required sections — it does **not** fill the funder's own form system, budget tables, or NSF-specific fields (Intellectual Merit / Broader Impacts). Tell the user the default 5-section template is not a grant form; adapt headings to the funder's required template and confirm with the user before writing |
 
@@ -77,7 +77,7 @@ Use `AskUserQuestion` to collect:
 - **Target word count** — default ~3,000 words; range 2,000–4,000 (humanities may extend to ~10,000).
 - **Optional** — target institution/supervisor; existing materials or a Zotero library to draw on.
 
-If the topic is too vague to scope a methodology, ask focused clarifying questions before proceeding.
+If the topic is too vague to scope a methodology, ask focused clarifying questions before proceeding. **Headless run** (no interactive user, e.g. called from another agent's pipeline): extract the requirements above from the calling prompt instead of asking, and record them as **locked assumptions** in the outline the way Phase 3 does — never invent a requirement the prompt did not state.
 
 ---
 
@@ -167,11 +167,11 @@ Save as `proposal_{topic_slug}_{YYYY-MM-DD}.md` in the user's working directory.
 
 Verify against [references/QUALITY_CHECKLIST.md](references/QUALITY_CHECKLIST.md). Before delivering, the **citation gate** must pass:
 
-- `grep -nE "xxx|XXXX|\[TBD\]|\[UNVERIFIED[^\]]*\]|10\.xxxx|doi:10\.[a-z]+/x|forthcoming DOI|\[.*占位.*\]"` returns 0 hits — or every remaining `[UNVERIFIED]` has been explicitly disclosed to the user and never presented as confirmed. (This regex is the single canonical version; [references/CITATION_INTEGRITY.md](references/CITATION_INTEGRITY.md) links to it rather than restating a variant.)
+- `grep -nE "xxx|XXXX|\[TBD\]|\[UNVERIFIED[^]]*\]|10\.xxxx|doi:10\.[a-z]+/x|forthcoming DOI|\[.*占位.*\]"` returns 0 hits — or every remaining `[UNVERIFIED]` has been explicitly disclosed to the user and never presented as confirmed. (This regex is the single canonical version; [references/CITATION_INTEGRITY.md](references/CITATION_INTEGRITY.md) links to it rather than restating a variant.)
 - Every in-text citation reconciles with the References list (no orphans either direction).
 - At least 20% of references, and every quantitative/directional claim, spot-checked against sources.
-- **AI-tell gate**: `grep -nEi "over the past (decade|two decades)|in recent years,|it is worth noting|plays a (crucial|pivotal) role|has garnered significant attention|delves into|a testament to|近年来，?随着|日益受到(广泛)?关注"` returns 0 hits in the body (see Core Principles; the same patterns are banned in every reference file and scaffold).
-- No placeholder `[brackets]` or "TBD" left in the body — **except** applicant-specific scaffold fields the user must personalize (`[University/Institution Name]`, `[Your Field]`, `[Month Year]`) and `[Figure N Suggestion]` labels, which are intentional and may remain.
+- **AI-tell gate**: `grep -nEi "over the past ((few|several|two|three) )?(decades?|years)|in recent years,|it is worth noting|plays a (crucial|pivotal|vital) role|sheds light on|paves the way|ever-evolving|has garnered significant attention|delves into|a testament to|众所周知|近年来，?随着|日益受到(广泛)?关注"` returns 0 hits in the body (see Core Principles; the same patterns are banned in every reference file and scaffold).
+- No placeholder `[brackets]` or "TBD" left in the body — **except** applicant-specific scaffold fields the user must personalize (`[University/Institution Name]`, `[Your Field]`, `[Month Year]`; 中文 scaffold 表头的 `[所属学科]`、`[大学/研究机构名称]`、`[年月]` 等同类字段) and `[Figure N Suggestion]` labels, which are intentional and may remain.
 
 Offer format conversion:
 

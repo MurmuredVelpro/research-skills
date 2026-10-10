@@ -24,7 +24,7 @@ A collection of Claude Code skills for academic research workflows.
 > papers you already have. Running a systematic review end to end means lit-search first, then
 > medical-imaging-review over its `dois.md`.
 
-> **Shared anti-fabrication core.** All four writing/rendering skills instantiate the same
+> **Shared anti-fabrication core.** All five writing/rendering skills instantiate the same
 > five-rule citation-integrity discipline; the variants are reconciled at development time in
 > [docs/citation-integrity-core.md](./docs/citation-integrity-core.md).
 
@@ -223,7 +223,7 @@ Prereqs: **Python 3.11+, Node 18+.** For Chinese decks on Linux: `sudo apt-get i
 
 ### Known limitation
 
-Figure localization is layout-dependent — ~95–100% on single-column / arXiv / Nature-style papers, ~75% on dense IEEE/TPAMI two-column pages. Low-confidence crops are **flagged for you to confirm**, never silently wrong. Stress-tested over 9 cross-layout papers: 0 crashes, 98% of figures localized. See [scholar-slides/README.md](./scholar-slides/README.md) for the full story.
+Figure localization is layout-dependent — ~95–100% on single-column / arXiv / Nature-style papers, ~75% on dense IEEE/TPAMI two-column pages. Low-confidence crops are **flagged for you to confirm**, never silently wrong. Stress-tested across cross-layout papers with 0 crashes; on the corpus checked in under `out/*/figures.json` the figure localization rate is reproducibly **60/61 ≈ 98.4%**. See [scholar-slides/README.md](./scholar-slides/README.md) for the full story.
 
 Design rationale and the 6-repo landscape survey behind this skill live in [docs/scholar-slides-design/](./docs/scholar-slides-design/).
 
@@ -244,7 +244,7 @@ Retrieve **everything** published on a topic inside a time window, and be able t
 
 ### Outputs
 
-`dois.md` (full DOI list, sectioned by quality tier, evidence per entry) · `references.md` (same order, GB/T 7714 / APA / IEEE / Nature / AMA) · `references.bib` · `PRISMA.md` · `coverage_report.md` · `human_queue.csv`
+`dois.md` (full DOI list, sectioned by quality tier, evidence per entry) · `references.md` (same order, GB/T 7714 / APA / IEEE / Nature / AMA) · `references.bib` (with `--bibtex`) · `PRISMA.md` · `coverage_report.md` · `human_queue.csv`
 
 ### Install & run
 

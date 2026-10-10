@@ -35,8 +35,20 @@ fi
 
 # --- smoke check -----------------------------------------------------------
 echo "==> verifying the install (test suites)"
-./.venv/bin/python -m pytest -q -p no:cacheprovider >/dev/null && echo "  python tests OK"
-npm test >/dev/null 2>&1 && echo "  node tests OK"
+# 不用 `cmd && echo OK`：set -e 对 && 列表的非末位命令不生效，套件失败
+# 只会少打一行 OK，坏安装仍以 0 退出（README 承诺 install 用测试套件验证）
+if ./.venv/bin/python -m pytest -q -p no:cacheprovider >/dev/null; then
+  echo "  python tests OK"
+else
+  echo "ERROR: python test suite failed — the install is broken; see above" >&2
+  exit 1
+fi
+if npm test >/dev/null 2>&1; then
+  echo "  node tests OK"
+else
+  echo "ERROR: node test suite failed — the install is broken; see above" >&2
+  exit 1
+fi
 
 echo "==> done. Try:  node scripts/build_deck.mjs out/attention/deck.json && \\"
 echo "                node scripts/render_deck.mjs out/attention/deck/deck.html pdf"

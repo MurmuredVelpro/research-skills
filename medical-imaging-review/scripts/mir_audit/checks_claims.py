@@ -17,14 +17,20 @@ from .parsing import *  # noqa: F401,F403
 from .projectio import *  # noqa: F401,F403
 
 
+#: 自成一块的行：Markdown 表格行与列表/引用条目。并进散文会把多指标行
+#: 揉成一个永远无法消解的 ambiguous 候选（TEMPLATES.md 自荐的 method/
+#: evidence 表格正是这种形状）——表格按行、列表按条目产出候选。
+_BLOCK_LINE_RE = re.compile(r"^(?:\||[-*+>]\s|\d+[.)]\s)")
+
+
 def merge_wrapped_lines(body_lines: list[SourceLine]) -> list[SourceLine]:
     """把硬换行的散文合并成每段一个逻辑行（行号取段首物理行）。
 
     ``visible_lines`` 按**物理行**返回，而下面的切句是逐行进行的：硬换行
     （标准 76 字符排版的手稿）会在行界把句子腰斩——实测一段正常排版的引言，
     每个句子只有**最后一行**进入主张检测（引用通常挂在句尾），前半句静默
-    逃过审计，且原子 ledger 匹配对换行句子永远对不上。标题与空行保持为
-    段边界，原样透传。
+    逃过审计，且原子 ledger 匹配对换行句子永远对不上。标题、空行与块行
+    （表格/列表/引用条目）保持为段边界，原样透传。
     """
     merged: list[SourceLine] = []
     buffer: list[str] = []
@@ -38,6 +44,10 @@ def merge_wrapped_lines(body_lines: list[SourceLine]) -> list[SourceLine]:
 
     for line in body_lines:
         if not line.text.strip() or parse_heading(line.text):
+            flush()
+            merged.append(line)
+            continue
+        if _BLOCK_LINE_RE.match(line.text.strip()):
             flush()
             merged.append(line)
             continue
@@ -283,7 +293,12 @@ def scan_claim_ledger(
         source_role = str(row.get("source_role", "")).strip().casefold()
         if claim_type not in CLAIM_TYPES:
             return False, "claim_type is outside the schema 2.0 enum"
-        if expected_claim_type and claim_type != expected_claim_type:
+        if expected_claim_type and claim_type != expected_claim_type and not (
+            # schema 2.0 枚举里的 synthesis 是合法类型：一条综合行覆盖它所
+            # 概括的 factual 陈述。此前严格相等让按文档填写的 synthesis 行
+            # 在审计器里永不可满足。
+            expected_claim_type == "factual" and claim_type == "synthesis"
+        ):
             return False, f"claim_type does not cover the detected {expected_claim_type} claim"
         if access_level not in ACCESS_LEVELS:
             return False, "access_level is outside the schema 2.0 enum"
@@ -453,6 +468,21 @@ def scan_claim_ledger(
                     "ambiguous_claim_segmentation",
                     claim.line,
                     "The sentence contains multiple quantitative or opposing directional claims; split it into atomic statements before ledger reconciliation.",
+                    line_excerpt(claim.text),
+                )
+            )
+            continue
+        if not claim.citation_ids:
+            # 三角链「正文主张 → 内联 citekey → ledger 行」少了中间一环，
+            # 任何指向该句的 ledger 行都能"完成"绑定——读者可见的溯源
+            # 不被强制。先挂稳定 citekey，再谈对账。
+            findings.append(
+                Finding(
+                    "critical",
+                    "claim_without_citekey",
+                    claim.line,
+                    "Material claim carries no inline citekey; attach a stable [@key] "
+                    "so the manuscript-citekey-ledger triangle can be audited.",
                     line_excerpt(claim.text),
                 )
             )

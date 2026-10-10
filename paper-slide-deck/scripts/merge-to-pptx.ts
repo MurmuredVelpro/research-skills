@@ -70,7 +70,7 @@ function parseArgs(): { dir: string; output?: string } {
   return { dir, output };
 }
 
-function findSlideImages(dir: string): SlideInfo[] {
+export function findSlideImages(dir: string): SlideInfo[] {
   if (!existsSync(dir)) {
     console.error(`Directory not found: ${dir}`);
     process.exit(1);
@@ -105,7 +105,13 @@ function findSlideImages(dir: string): SlideInfo[] {
       seen.add(f);
       const match = f.match(SLIDE_PATTERN)!;
       const baseName = f.replace(/\.(png|jpg|jpeg)$/i, "");
-      const promptPath = hasPrompts ? join(promptsDir, `${baseName}.md`) : undefined;
+      // 生成器明确接受 *.md 与 *.txt 两种 prompt（list_prompt_files 先 txt 后
+      // md）——配对也必须两者都认，否则 .txt 的讲稿被静默丢出备注
+      const promptPath = hasPrompts
+        ? [`${baseName}.md`, `${baseName}.txt`]
+            .map((n) => join(promptsDir, n))
+            .find((p) => existsSync(p))
+        : undefined;
       slides.push({
         filename: f,
         path: join(base, f),
@@ -180,7 +186,8 @@ export function validateSlideNumbers(slides: SlideInfo[]): {
     warnings.push(
       `slide number gap(s): ${missing.map((n) => String(n).padStart(2, "0")).join(", ")} ` +
         `missing between ${String(lo).padStart(2, "0")}..${String(hi).padStart(2, "0")} — ` +
-        `renumber after deleting slides (references/modification-guide.md)`
+        `renumber after deleting slides (references/modification-guide.md), ` +
+        `or a slide failed to generate (re-run generate-slides.py)`
     );
   }
   if (lo > 1) {
