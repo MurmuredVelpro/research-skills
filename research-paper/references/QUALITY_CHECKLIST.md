@@ -9,7 +9,7 @@ the proposal skill: your own numbers are the fabrication risk here.
 
 - [ ] Placeholder gate returns 0 hits, or every `[UNVERIFIED]`/`[PENDING]` is
       explicitly disclosed and never presented as real:
-      `grep -nE "xxx|XXXX|\[TBD\]|\[PENDING|\[UNVERIFIED\]|10\.xxxx|doi:10\.[a-z]+/x" paper_draft.md`
+      `grep -nE "xxx|XXXX|\[TBD\]|\[PENDING|\[UNVERIFIED[^\]]*\]|10\.xxxx|doi:10\.[a-z]+/x" paper_draft.md`
 - [ ] AI-tell gate returns 0 hits (regex in SKILL.md Phase 5).
 - [ ] **results_ledger reconciliation**: every number in Abstract/Results
       appears in `results_ledger.csv` with the same value; every ledger row
