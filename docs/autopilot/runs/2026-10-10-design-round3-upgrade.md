@@ -17,7 +17,7 @@ Frozen at takeoff. A run changes `status` and `evidence`, never the criterion.
 | id | criterion | proven by | status | evidence |
 |---|---|---|---|---|
 | C1 | 六个 skill 每个在四个角度各有 ≥1 条带 `file:line` 证据的评审记录，或明确「无发现」 | `docs/design-review-round3.md` 的 skill×角度矩阵 | proven | 922d3f7（24 格全满：23 格有发现，mir×A3 无发现+检查清单） |
-| C2 | 每条 finding 分级并有处置状态，无静默丢弃 | 本记录 Ledger | proven | 本记录（68 条全部处置） |
+| C2 | 每条 finding 分级并有处置状态，无静默丢弃 | 本记录 Ledger | proven | 本记录（85 条全部处置——审计员逐 ID 展开核对无静默丢弃） |
 | C3 | 全部确认的 P0 修复且带红→绿验证 | 修复 diff + 证据 | proven | LS-01/RP-01 @ efc2af2；resume 测试红（stage2-c8 证据）→绿；doc-contract 2 subtest FAILED→passed |
 | C4 | 全部确认的 P1：修复或 minor-open 写明理由 | 本记录 Ledger | proven | 21 条 P1：20 修复 + 1 parked（SS-06，仓库外文件） |
 | C5 | 四条测试链（现为十条 gate 命令）在最终 commit 干净树上全绿 | 最终 machine gate 证据 | open | d73a425 上 10/10 绿（final-gate.txt）；cc30766 后复跑见 final-gate-2.txt |
@@ -64,7 +64,7 @@ Frozen at takeoff. A run changes `status` and `evidence`, never the criterion.
 | D5 | 5 | cc30766（XC-03）落在评审 pin d73a425 之后——一行文档修复，最终 gate 在其后复跑覆盖 | 为评审纯净度回滚重做 | 评审期间该行又被改动 |
 | D6 | 4 | SS-07/README 压测数字改为「可复算口径」（60/61≈98.4%） | 保留原数字（无逐篇记录支撑） | 人类有 9 篇测量记录可出示 |
 
-### Review findings（第三轮评审 68 条的处置）
+### Review findings（第三轮评审 85 条的处置）
 
 | id | round | reviewer | finding | status | note |
 |---|---|---|---|---|---|
@@ -130,5 +130,5 @@ Riskiest first.
 | 3 | medical-imaging-review/ | `python3 -m pytest tests/test_audit_manuscript.py -q` | 117 例含 Round3AuditHardeningTests 五锁 |
 | 4 | scholar-slides/ | `node --test tests/*.test.mjs` | 79 例；`node scripts/export_pptx.mjs out/attention/deck.json` 后 `ls out/attention/deck/deck.pptx` 存在（parity 门可跑） |
 | 5 | paper-slide-deck/ | `node scripts/merge-to-pdf.ts <任一图片目录>`（纯 node） | PDF 真实产出（不再 "Bun is not defined"） |
-| 6 | docs/design-review-round3.md | 通读 | 68 条发现与你看到的代码现状对得上；处置与本记录 Ledger 一致 |
+| 6 | docs/design-review-round3.md | 通读 | 85 条发现与你看到的代码现状对得上；处置与本记录 Ledger 一致 |
 | 7 | 停机坪 P1 | 执行 Parked 表两条 cp 后 diff 验证 | 部署副本与仓库一致 |
