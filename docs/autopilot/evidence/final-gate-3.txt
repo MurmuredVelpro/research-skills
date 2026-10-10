@@ -1,0 +1,156 @@
+# Machine gate — final-gate-3
+
+- commit: be256b8
+- working tree: clean (the gate refuses to start otherwise)
+- recorded by: /Users/louwill/.claude/skills/autopilot/scripts/run-gate.sh (sha256 f7df72490cb4216d)
+- started: 2026-10-10T03:38:43Z
+- workdir: /Users/louwill/VibeResearching/research-skills
+
+## 1. `cd lit-search && uv run pytest -q`
+
+exit 0 · 6 s
+
+```
+.................................ssssssssss............................. [  8%]
+........................................................................ [ 16%]
+........................................................................ [ 24%]
+........................................................................ [ 32%]
+........................................................................ [ 40%]
+........................................................................ [ 48%]
+.........ss............................................................. [ 57%]
+........................................................................ [ 65%]
+........................................................................ [ 73%]
+........................................................................ [ 81%]
+........................................................................ [ 89%]
+........................................................................ [ 97%]
+.......sss.........                                                      [100%]
+```
+
+## 2. `cd lit-search && uv run ruff check .`
+
+exit 0 · 0 s
+
+```
+All checks passed!
+```
+
+## 3. `cd scholar-slides && python3 -m pytest -p no:warnings -q`
+
+exit 0 · 2 s
+
+```
+the paper once and drop it there, e.g.:\n  ./.venv/bin/python 
+scripts/prepare_source.py 1706.03762 --out-dir /tmp/attn && \\\n  cp 
+/tmp/attn/1706.03762.pdf tests/fixtures/attention.pdf')
+Test tests/test_pptx_parity.py::test_real_exported_decks_are_faithful was 
+skipped. Reason: 
+('/Users/louwill/VibeResearching/research-skills/scholar-slides/tests/test_pptx_
+parity.py', 132, 'Skipped: out/attention not built')
+Test tests/test_pptx_parity.py::test_real_exported_decks_are_faithful was 
+skipped. Reason: 
+('/Users/louwill/VibeResearching/research-skills/scholar-slides/tests/test_pptx_
+parity.py', 132, 'Skipped: out/deepseek_v32 not built')
+Test tests/test_pptx_parity.py::test_real_exported_decks_are_faithful was 
+skipped. Reason: 
+('/Users/louwill/VibeResearching/research-skills/scholar-slides/tests/test_pptx_
+parity.py', 132, 'Skipped: out/deepseek_conf not built')
+```
+
+## 4. `cd scholar-slides && node --test tests/*.test.mjs`
+
+exit 0 · 1 s
+
+```
+✔ buildFigMeta maps figures.json ids to min-font + bbox shape + panel count (0.283167ms)
+✔ renderReviewFindings nudges (P3) when the rubric loop never ran (0.214375ms)
+✔ renderReviewFindings blocks-for-review (P2) while rework slides remain open (0.568041ms)
+✔ renderReviewFindings is silent when the loop ran and spent the rework list (0.230833ms)
+✔ renderReviewFindings reports an unreadable report as P2, never throws (0.179375ms)
+✔ references render single-column below 4 entries, two-column at 4+ (0.172ms)
+✔ small tables render roomy (bigger type), wide/long tables stay compact (0.123791ms)
+ℹ tests 79
+ℹ suites 0
+ℹ pass 79
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 870.542542
+```
+
+## 5. `cd medical-imaging-review && python3 -m pytest tests/ -q`
+
+exit 0 · 2 s
+
+```
+........................................ [ 33%]
+................................................ [ 74%]
+..............................                                                 [100%]Running teardown with pytest sessionfinish...
+
+118 passed, 122 subtests passed in 0.58s
+```
+
+## 6. `cd paper-slide-deck && python3 -m pytest tests/ -q`
+
+exit 0 · 1 s
+
+```
+...........                                                              [100%]Running teardown with pytest sessionfinish...
+
+11 passed in 0.03s
+```
+
+## 7. `cd paper-slide-deck && node --test tests/*.mjs`
+
+exit 0 · 0 s
+
+```
+✔ a deck starting at 03 warns (0.567709ms)
+✔ zero-based decks are tolerated silently (0.148417ms)
+Added: 01-slide-cover.png [png]
+
+Created: /var/folders/kp/q6xvh38n39x8tw10d5hx_fcr0000gn/T/psd-pdf-D1YqBF/deck.pdf
+Total pages: 1
+✔ createPdf writes the PDF under plain node (no Bun.write) (7.335625ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 75.660833
+```
+
+## 8. `cd research-paper && python3 -m pytest tests/ -q`
+
+exit 0 · 1 s
+
+```
+.......                                                          [100%]Running teardown with pytest sessionfinish...
+
+7 passed, 8 subtests passed in 0.03s
+```
+
+## 9. `cd research-proposal && python3 -m pytest tests/ -q`
+
+exit 0 · 1 s
+
+```
+......                               [100%]Running teardown with pytest sessionfinish...
+
+6 passed, 36 subtests passed in 0.04s
+```
+
+## 10. `python3 -m pytest tests/ -q`
+
+exit 0 · 1 s
+
+```
+....                                                           [100%]Running teardown with pytest sessionfinish...
+
+4 passed, 10 subtests passed in 0.01s
+```
+
+- finished: 2026-10-10T03:38:58Z
+- result: passed
