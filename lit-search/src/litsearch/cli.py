@@ -44,6 +44,7 @@ from litsearch.deliver import DeliverError as _DeliverError
 from litsearch.fulltext import (
     institutional_access_csv,
     resolve_fulltext,
+    resolver_failure_report,
 )
 from litsearch.fulltext import summarize as summarize_fulltext
 from litsearch.harvest import PlanReport, harvest, harvest_into, plan, read_all_records
@@ -185,6 +186,36 @@ def strategies(
         typer.echo(f"  {query.query}")
 
 
+def _validated_sources(raw: str, loaded) -> list[str]:
+    """--sources 的未知名必须在这里死掉，不能静默少跑一个源。
+
+    拼错一个源名（cvf→cv）在交集过滤下永不匹配、无任何告警——少召回
+    一个源而用户以为跑了，正是本工具最不能接受的失败模式。
+    """
+    only = _split(raw)
+    if not only:
+        return []
+    implemented = available_sources()
+    unknown = [name for name in only if name not in implemented]
+    if unknown:
+        typer.secho(
+            f"未实现或拼错的源：{', '.join(unknown)}；已实现 {sorted(implemented)}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    not_recalled = [name for name in only if name not in loaded.recall_sources()]
+    if not_recalled:
+        typer.secho(
+            f"这些源未在本课题协议中启用（recall）：{', '.join(not_recalled)}——"
+            f"协议没有的源不会因 --sources 凭空加入，先在 topic.yaml 启用它",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    return only
+
+
 @app.command("plan")
 def plan_command(
     topic: Path = typer.Option(..., "--topic", help="课题协议 YAML"),
@@ -192,7 +223,9 @@ def plan_command(
 ) -> None:
     """干跑：在真正采集前，按源、按检索式给出预计命中数与筛选成本。"""
     loaded = _load(topic)
-    report: PlanReport = asyncio.run(plan(loaded, Credentials.from_env(), only=_split(sources)))
+    report: PlanReport = asyncio.run(
+        plan(loaded, Credentials.from_env(), only=_validated_sources(sources, loaded))
+    )
 
     typer.echo(
         f"\n课题 {report.topic_id}  采集窗口 "
@@ -265,7 +298,7 @@ def harvest_command(
         typer.secho("--into 与 --phase 必须成对使用", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=2)
 
-    only = _split(sources) or _depth_sources(depth, loaded)
+    only = _validated_sources(sources, loaded) or _depth_sources(depth, loaded)
 
     if into:
         target = _open_compatible_run(runs_root, into, loaded, topic)
@@ -586,6 +619,15 @@ def snowball_command(
             corpus_before=in_window_before,
         )
         history.append(stat)
+        # 每轮立即落盘：下一轮 harvest_into 抛错（exit 2）时，该轮的阶段
+        # 记录与 manifest 已经提交，轮次统计若只在整条命令结束时写，
+        # 已完成轮次会永久缺失——饱和曲线残缺，is_saturated 在残缺
+        # 历史上判饱和
+        merged_now = {row.number: row for row in history}
+        run_dir.write_jsonl(
+            "snowball_rounds.jsonl",
+            [asdict(merged_now[number]) for number in sorted(merged_now)],
+        )
         typer.echo(
             f"  语料 {before:,} → {len(corpus):,}；"
             f"窗口内新增 {stat.new_in_window:,}（占轮前 {stat.new_rate:.1%}）"
@@ -818,6 +860,11 @@ def fulltext_command(
     ):
         share = count / summary.total if summary.total else 0
         typer.echo(f"{label:<22}{count:>8,}{share:>9.0%}")
+
+    # 解析器故障必须与「确无合法 OA」分开说——否则 unavailable 里混着
+    # 服务故障/配额耗尽，institutional_access.csv 把前者伪装成付费墙
+    for line in resolver_failure_report():
+        typer.secho(f"⚠️ {line}", fg=typer.colors.YELLOW)
 
     hosts: dict[str, int] = {}
     for item in resolutions:
@@ -1503,6 +1550,14 @@ def deliver_command(
     if cached and cached_keys == current_keys:
         # OpenAlex 有日配额，重跑渲染不该再烧一次。
         typer.echo(f"复用 ranked.jsonl（{len(cached):,} 条）；要重取元数据加 --refresh")
+        if ccf:
+            # 缓存不携带外部目录的状态：ranked.jsonl 若来自无 CCF 的一次 rank，
+            # 复用渲染的 S/A/B 分层沿旧标注，--ccf 形同未传且无任何提示。
+            typer.secho(
+                "--ccf 在缓存复用路径不生效（外部目录不进依赖哈希）；"
+                "要让 CCF 分层生效请加 --refresh 重取。",
+                fg=typer.colors.YELLOW,
+            )
         ranked = load_ranked(cached)
     else:
         if cached:

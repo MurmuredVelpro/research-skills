@@ -56,8 +56,9 @@ cd "$SKILL_DIR" && uv run lit harvest --topic "$PROJ/topics/<id>.yaml" \
 
 **全量交付，分层只决定顺序，不决定去留。**
 
-两份参考文件，按需读，不要预先读：
+三份参考文件，按需读，不要预先读：
 `references/topic-template.yaml`（写协议用）、
+`references/jev-profile-template.yaml`（用 `--model jev` / `lit triage` / `lit facets` 前必读——判定 API 的阈值配置）、
 `references/evidence.md`（下面每条规则背后的实测数字，用户追问或排查时才需要）。
 
 ---
@@ -415,7 +416,7 @@ lit screen-eval <run> --topic ... --reference-round <人工裁决过的轮次> \
 
 ## 推送 Zotero
 
-`lit report` 生成 `zotero_dois.txt`。逐条调 `zotero_add_by_doi`。
+`lit report` 生成 `zotero_dois.txt`。逐条用 Zotero MCP 按 DOI 添加（工具名以所装 MCP 为准——本仓库配套为 `zotero_add_item`，传 DOI 即可）。
 **推送前先确认 collection 名称——这是对外部系统的写操作，不要默认执行。**
 该清单是标题摘要初筛通过的**全文候选集**，不是最终纳入研究。没有 DOI 的候选不在
 清单里，不要凭空造标识符；推完要把这件事告诉用户。
@@ -432,9 +433,10 @@ lit screen-eval <run> --topic ... --reference-round <人工裁决过的轮次> \
 | `manifest.json` | 协议指纹 + 每条检索式的结局与状态 |
 | `boundary_cases.csv` | 日期精度不足、以及边缘区标题合并（相似度 95–97.5，合并拿不准）——需人工裁定 |
 | `human_queue.csv` | 双通道分歧或低置信度，需人工裁定；`lit triage` 会把它按最可能纳入重排并附上判定器线索 |
+| `fulltext.jsonl` / `institutional_access.csv` | `lit fulltext` 的合法全文位置解析（筛后 `--included` 用）；拿不到开放全文的记录进机构订阅清单 |
 | `screening_trial.json` / `human_queue_trial.csv` | `--limit` 试跑的轮次与队列（**校准时看这两个**，不是 `human_queue.csv`）；不占正式轮次号 |
 | `jev_scores.jsonl` | 判定 API 的逐条打分（`--model jev` / `lit triage`）。改阈值只需重新路由，不重打 |
-| `jev_scores_trial.jsonl` | `lit triage --limit` 试跑的打分；校准阈值时以它为 `--candidate-scores` 输入 |
+| `jev_scores_trial.jsonl` | `lit screen --model jev --limit N` 试跑的打分；校准阈值时以它为 `--candidate-scores` 输入 |
 | `screen_eval_*.md` / `*_disagreements.csv` | `lit screen-eval` 的评估报告与分歧清单（填好可直接 `lit adjudicate`） |
 | `facets.jsonl` / `facets.csv` | `lit facets` 的标注：外部验证、多中心、公开数据集等。只有 stated/not_stated，**没有 no** |
 | `PRISMA.md` | 各环节计数（不自洽会拒绝生成） |

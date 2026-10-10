@@ -2006,3 +2006,39 @@ class TestRunDiff:
 
         assert result.exit_code == 2
         assert "不同课题" in result.output
+
+
+class TestSourcesValidation:
+    def test_a_misspelled_source_name_exits_with_two(self, topic_path, runs_root):
+        """实测事故（第三轮评审 LS-11）：--sources 拼错一个词在交集过滤下
+        静默少跑一个源、无任何告警——少召回而用户以为跑了。"""
+        result = runner.invoke(
+            app,
+            [
+                "harvest", "--topic", str(topic_path), "--runs-root", str(runs_root),
+                "--sources", "openalex,cvvf",
+            ],
+        )
+        assert result.exit_code == 2
+        assert "cvvf" in result.output
+
+    def test_a_source_not_in_the_protocol_is_rejected_not_silently_skipped(
+        self, topic_path, runs_root
+    ):
+        # 本夹具的协议只启用 openalex+grey；europepmc 已实现但未启用
+        result = runner.invoke(
+            app,
+            [
+                "harvest", "--topic", str(topic_path), "--runs-root", str(runs_root),
+                "--sources", "openalex,europepmc",
+            ],
+        )
+        assert result.exit_code == 2
+        assert "europepmc" in result.output
+
+    def test_plan_rejects_the_same_typos(self, topic_path):
+        result = runner.invoke(
+            app, ["plan", "--topic", str(topic_path), "--sources", "openalex,oops"]
+        )
+        assert result.exit_code == 2
+        assert "oops" in result.output
