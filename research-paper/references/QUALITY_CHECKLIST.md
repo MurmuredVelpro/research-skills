@@ -12,13 +12,29 @@ the proposal skill: your own numbers are the fabrication risk here.
       `grep -nE "xxx|XXXX|\[TBD\]|\[PENDING|\[UNVERIFIED[^]]*\]|10\.xxxx|doi:10\.[a-z]+/x" paper_draft.md`
 - [ ] AI-tell gate returns 0 hits (regex in SKILL.md Phase 5).
 - [ ] **Reporting-checklist artifact**: `checklist_<name>.md` exists next to the draft
-      and has no unresolved rows:
+      and every table row carries a disposition (REPORTING_CHECKLISTS 规定的两列
+      表：条目 → 位置或处置；空第二列 = 未处置):
       ```bash
-      ls checklist_*.md && ! grep -nE "^[[:space:]]*- \[ \]" checklist_*.md
+      ls checklist_*.md && python3 - <<'PY'
+      import glob, re, sys
+      bad = []
+      for path in sorted(glob.glob("checklist_*.md")):
+          for n, line in enumerate(open(path, encoding="utf-8"), 1):
+              row = line.strip()
+              if re.match(r"^-\s*\[ \]", row):
+                  bad.append(f"{path}:{n} unchecked box: {row[:40]}")
+                  continue
+              if not row.startswith("|") or set(row) <= {"|", "-", ":", " "}:
+                  continue  # 只看表格数据行
+              cells = [c.strip() for c in row.strip("|").split("|")]
+              if len(cells) >= 2 and cells[0] and (
+                  not cells[1] or cells[1] in {"[ ]", "TBD", "xxx"}
+              ):
+                  bad.append(f"{path}:{n} no disposition: {cells[0][:40]}")
+      print("\n".join(bad) or "all checklist rows disposed")
+      sys.exit(1 if bad else 0)
+      PY
       ```
-      (`grep` finding an unchecked `- [ ]` box — anywhere in the item line — fails
-      the `!`; checked `- [x]` rows pass. Every binding-checklist row must be
-      answered, even if the answer is a documented gap.)
 
 - [ ] **results_ledger reconciliation**: every number in the manuscript's own
       prose — Abstract, Methods (n=, doses, hyperparameters), Results, and

@@ -13,7 +13,6 @@ import json
 import re
 import shutil
 import sys
-import time
 import uuid
 from datetime import datetime, timezone
 from io import StringIO
@@ -579,17 +578,18 @@ def initialize_project(
     if target.exists() or target.is_symlink():
         raise ProjectInitError(f"refusing to overwrite existing path: {target}")
 
-    # 清理被硬杀（SIGKILL）遗留的陈旧 staging：except 分支只清本次的，
-    # mkdir 与 rename 之间被杀会留下隐藏目录，后续运行既不识别也不清理。
-    # 年龄守卫（>15 分钟）：并发初始化的 staging 是秒级新鲜的，无守卫的
-    # 全量清理会删掉另一个实例正在进行的工作
-    cutoff = time.time() - 900
-    for stale in review_root.glob(".initializing-*"):
-        try:
-            if stale.is_dir() and not stale.is_symlink() and stale.stat().st_mtime < cutoff:
-                shutil.rmtree(stale, ignore_errors=True)
-        except OSError:
-            pass  # 清理是尽力而为；竞态下消失的目录不是错误
+    # 被硬杀（SIGKILL）遗留的陈旧 staging：except 分支只清本次的，mkdir 与
+    # rename 之间被杀会留下隐藏目录，此前既不识别也不清理。只**报告**不自动
+    # 删除——mtime 无法证明那个实例已经退出（暂停 >15 分钟的实例仍是活的，
+    # 任何年龄阈值都只是推迟误删；自动清理需进程锁，超出本脚本的重量级）。
+    # 删除留给明确的人工动作。
+    residues = sorted(p.name for p in review_root.glob(".initializing-*"))
+    if residues:
+        print(
+            "注意：发现历史遗留的初始化 staging（可能来自被中断的运行）：\n  "
+            + "\n  ".join(residues)
+            + "\n确认无并发初始化在进行后，可手动删除它们。"
+        )
 
     staging = review_root / f".initializing-{resolved_id}-{uuid.uuid4().hex[:8]}"
     staging.mkdir(exist_ok=False)
