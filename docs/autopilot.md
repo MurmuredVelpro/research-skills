@@ -47,6 +47,9 @@ state). All gate commands are offline and fixture-based, so every one is `safe`.
 | `cd medical-imaging-review && python3 -m pytest tests/ -q` | medical-imaging-review behavior | safe |
 | `cd paper-slide-deck && python3 -m pytest tests/ -q` | paper-slide-deck python behavior | safe |
 | `cd paper-slide-deck && node --test tests/*.mjs` | paper-slide-deck node behavior | safe |
+| `cd research-paper && python3 -m pytest tests/ -q` | research-paper doc contracts（门禁正则/派生标记/相位映射，第三轮起） | safe |
+| `cd research-proposal && python3 -m pytest tests/ -q` | research-proposal doc contracts（AI-tell 覆盖/豁免/链接验存，第三轮起） | safe |
+| `python3 -m pytest tests/ -q` | 跨 skill 共享层：citation-core 注册表↔变体↔README、旗标分类（第三轮起） | safe |
 
 ## Pre-authorized
 
