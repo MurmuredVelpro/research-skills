@@ -13,6 +13,28 @@ from pathlib import Path
 from .projectio import *  # noqa: F401,F403
 
 
+def _route_recorded_in_context(project_dir: Path) -> str | None:
+    """REVIEW_CONTEXT.md 在初始化时写下的路由 token（协议时点的冻结记录）。"""
+    try:
+        text = (project_dir / "REVIEW_CONTEXT.md").read_text(encoding="utf-8")
+    except OSError:
+        return None
+    match = re.search(r"(?im)^-\s*Route:\s*`([a-z-]+)`", text)
+    return match.group(1) if match else None
+
+
+def _route_change_documented(project_dir: Path, old: str, new: str) -> bool:
+    """protocol_deviations.md 同时提及新旧路由 = 已有人工记录的协议偏离。"""
+    for candidate in sorted(project_dir.rglob("protocol_deviations.md")):
+        try:
+            text = candidate.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if old in text and new in text:
+            return True
+    return False
+
+
 def validate_project_config(route: str, project_dir: Path, *, formal: bool) -> list[str]:
     config, error = read_project_config(project_dir)
     if error:
@@ -35,6 +57,19 @@ def validate_project_config(route: str, project_dir: Path, *, formal: bool) -> l
         )
     if config.get("route") != route:
         problems.append("review_config.yaml route must match the requested audit route")
+    recorded = _route_recorded_in_context(project_dir)
+    if recorded and recorded != str(config.get("route")) and not _route_change_documented(
+        project_dir, recorded, str(config.get("route"))
+    ):
+        # 「collection 开始后路由不可变」写在 TEMPLATES.md 的 Validation rules
+        # 里；没有这条交叉核对，把 config 从 systematic 改成 narrative 再按
+        # narrative 审计即可合法躲过全部人工 gate（实测复现）。
+        problems.append(
+            f"route drift: REVIEW_CONTEXT.md recorded route '{recorded}' but "
+            f"review_config.yaml says '{config.get('route')}' — route is immutable "
+            f"after collection starts; record the deviation in protocol_deviations.md "
+            f"or re-initialize the project"
+        )
     if yaml_scalar(str(config.get("schemas", "")), "claim_ledger") != "2.0":
         problems.append("review_config.yaml schemas.claim_ledger must be exactly 2.0")
     if route == "systematic" and yaml_scalar(
