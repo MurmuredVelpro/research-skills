@@ -5,7 +5,7 @@ description: Runs an exhaustive time-windowed literature search over a research 
 
 # 时间窗受限的高召回文献检索
 
-驱动 `literature-search/` 这条流水线。核心前提：**召回率不是提示词问题，是检索工程问题。**
+驱动本目录 `src/litsearch/` 的 `lit` CLI 流水线。核心前提：**召回率不是提示词问题，是检索工程问题。**
 反复 WebSearch 得到的是"相关度排序的前若干条"，既不可复现，也无法说明漏了什么。
 
 ## 工具位置与产物去向（第一步，别跳过）
