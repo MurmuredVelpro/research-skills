@@ -1954,3 +1954,39 @@ class RouteBannedPhraseTests(unittest.TestCase):
             "The PRISMA flow across included studies is shown [@a]."
         )
         self.assertEqual([], audit.scan_route_banned_phrases("systematic", body))
+
+
+class DuplicateDoiEntryShapeTests(unittest.TestCase):
+    def test_an_entry_with_doi_field_and_doi_url_is_not_a_duplicate(self):
+        """案例运行（coronary-hemo-dl）实测发现：条目同时含 doi 字段与
+        https://doi.org/... url 字段（常见 bibtex 风格）时被误报 duplicate_doi
+        ——同一条目内的重复不是重复文献。"""
+        from mir_audit.checks_text import scan_duplicate_dois
+        from mir_audit.parsing import ReferenceSet
+
+        rs = ReferenceSet(
+            entries={
+                "@li2021": (
+                    "@article{li2021, doi = {10.1234/x}, url = {https://doi.org/10.1234/x}}"
+                )
+            },
+            entry_lines={"@li2021": 1},
+            findings=[],
+        )
+        self.assertEqual([], scan_duplicate_dois(rs))
+
+    def test_two_entries_sharing_a_doi_still_flag(self):
+        from mir_audit.checks_text import scan_duplicate_dois
+        from mir_audit.parsing import ReferenceSet
+
+        rs = ReferenceSet(
+            entries={
+                "@a": "@article{a, doi = {10.1234/x}}",
+                "@b": "@article{b, doi = {10.1234/x}}",
+            },
+            entry_lines={"@a": 1, "@b": 2},
+            findings=[],
+        )
+        findings = scan_duplicate_dois(rs)
+        self.assertEqual(1, len(findings))
+        self.assertEqual("duplicate_doi", findings[0].category)

@@ -462,8 +462,10 @@ def scan_structure(
 def scan_duplicate_dois(references: ReferenceSet) -> list[Finding]:
     doi_to_ids: dict[str, list[str]] = defaultdict(list)
     for identifier, entry in references.entries.items():
-        for raw in DOI_RE.findall(entry):
-            doi = raw.casefold().rstrip(".,;:})")
+        # 同一条目内的重复（doi 字段 + https://doi.org/... url 字段——常见
+        # bibtex 风格）不是重复文献；跨条目共享同一 DOI 才是。原始匹配串
+        # 尾巴不同（"},\" 与 "}"），必须**归一化后**再去重
+        for doi in {raw.casefold().rstrip(".,;:})") for raw in DOI_RE.findall(entry)}:
             doi_to_ids[doi].append(identifier)
     return [
         Finding(
