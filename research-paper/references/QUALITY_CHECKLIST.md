@@ -11,12 +11,30 @@ the proposal skill: your own numbers are the fabrication risk here.
       explicitly disclosed and never presented as real:
       `grep -nE "xxx|XXXX|\[TBD\]|\[PENDING|\[UNVERIFIED[^\]]*\]|10\.xxxx|doi:10\.[a-z]+/x" paper_draft.md`
 - [ ] AI-tell gate returns 0 hits (regex in SKILL.md Phase 5).
-- [ ] **results_ledger reconciliation**: every number in Abstract/Results
-      appears in `results_ledger.csv` with the same value; every ledger row
-      backing a claim is actually cited in the text. Diff method: extract
-      numeric tokens from Results and compare against the ledger's value
-      column — differences are either retyped-from-memory errors (fix) or
-      formatting (e.g. percent vs. fraction — unify).
+- [ ] **results_ledger reconciliation**: every number in the manuscript's own
+      prose — Abstract, Methods (n=, doses, hyperparameters), Results, and
+      Discussion restatements — appears in `results_ledger.csv` with the same
+      value; every ledger row backing a claim is actually cited in the text.
+      Paste-command diff (lists every draft number no ledger value covers —
+      each hit is either a retyped-from-memory error (fix) or formatting,
+      e.g. percent vs. fraction (unify); years, section numbers and citation
+      brackets are judgment calls, not auto-passes):
+      ```bash
+      python3 - <<'PY'
+      import csv, pathlib, re
+      draft = pathlib.Path("paper_draft.md").read_text(encoding="utf-8")
+      draft = re.sub(r"\[[^\]]*\]", "", draft)  # strip citations/flags first
+      numbers = set(re.findall(r"\d+(?:\.\d+)?", draft))
+      ledger = set()
+      for row in csv.DictReader(open("results_ledger.csv", encoding="utf-8")):
+          value = (row.get("value") or "").strip()
+          if value:
+              ledger |= set(re.findall(r"\d+(?:\.\d+)?", value))
+      uncovered = sorted(numbers - ledger)
+      print("draft numbers not covered by any ledger value:",
+            uncovered if uncovered else "none")
+      PY
+      ```
 - [ ] Citation reconciliation: in-text ↔ bibliography 1:1 both directions
       (see CITATION_INTEGRITY.md).
 - [ ] Abbreviation list complete: every abbreviation defined at first use.

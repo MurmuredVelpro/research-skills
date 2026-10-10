@@ -1,5 +1,10 @@
 # Citation Integrity Protocol
 
+Derived from `docs/citation-integrity-core.md` at development time (convention:
+(Author, Year) / GB/T 7714 顺序编码制; this copy ships self-contained). Variant-specific
+machinery — the (Author, Year) reconciliation regex and the Phase 2/5 gate wiring — lives
+here, not in the core.
+
 This is the most important reference file in the skill. Citation fabrication / drift is the #1 failure mode of LLM-drafted research proposals. A proposal that reaches an admissions committee, supervisor, or funding panel with a fabricated reference is not a stylistic slip — it is an **academic-integrity violation** that can end an application.
 
 This protocol adapts the discipline of the sister skill `medical-imaging-review` to the **author–year (Author, Year)** citation convention used in proposals (APA / MLA / Chicago / GB/T 7714), not the numbered `[N]` convention of review manuscripts. Both are variants of the shared five-rule core reconciled at development time in the repository's `docs/citation-integrity-core.md` — conventions differ, the rules do not.

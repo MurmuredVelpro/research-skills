@@ -34,9 +34,10 @@ everything:
 |---|---|---|
 | Imaging-AI method / model paper | IMRaD, methods-forward | CLAIM 2024 |
 | Prediction / risk model | IMRaD + model development emphasis | TRIPOD+AI |
+| Diagnostic accuracy study | IMRaD, test-vs-reference emphasis | **STARD 2015** (可与 CLAIM 并行声明) |
 | Observational / cohort study | IMRaD, methods after hypotheses | STROBE |
 | (Rare here) trial, systematic review | **Out of scope** — say so and stop | CONSORT / PRISMA via the right skill |
-| CS/eng venue paper (CVPR/NeurIPS style) | Abstract → Intro → Related → Method → Experiments → Conclusion | venue's own checklist/reproducibility statement |
+| CS/eng venue paper (CVPR/NeurIPS style) | Abstract → Intro → Related Work → Method → Experiments → Discussion → Conclusion | venue's own checklist/reproducibility statement |
 
 Read [references/STRUCTURE_GUIDE.md](references/STRUCTURE_GUIDE.md) for
 section-by-section construction and [references/REPORTING_CHECKLISTS.md](references/REPORTING_CHECKLISTS.md)
@@ -70,7 +71,9 @@ Inventory every number that will appear in Results:
 - This inventory becomes `results_ledger.csv` (see
   [references/QUALITY_CHECKLIST.md](references/QUALITY_CHECKLIST.md)) — the
   paper-side sibling of the review skill's claim ledger: one row per
-  load-bearing number, `claim_location → source_artifact → value`.
+  load-bearing number, `claim_id → section → claim_text → value`（列名以
+  [references/QUALITY_CHECKLIST.md](references/QUALITY_CHECKLIST.md) 的
+  schema 表头为准）.
 
 ## Phase 3: Outline + approval (red line)
 
@@ -81,7 +84,9 @@ outline and wait for explicit approval** (same rules as research-proposal:
 
 ## Phase 4: Write-with-verify (per section)
 
-Draft section by section; after each section, before starting the next:
+Draft section by section **into a single working file `paper_draft.md`** (the
+Phase 5 gates grep exactly that filename — a renamed draft makes them scan an
+empty file and report a false zero-hit); after each section, before starting the next:
 
 1. Every citation in the section is from the verified pool (rules:
    [references/CITATION_INTEGRITY.md](references/CITATION_INTEGRITY.md)).
@@ -101,13 +106,13 @@ Mechanical gates (paste command output as evidence):
 grep -nE "xxx|XXXX|\[TBD\]|\[PENDING|\[UNVERIFIED[^\]]*\]|10\.xxxx|doi:10\.[a-z]+/x" paper_draft.md
 
 # 2) AI-tell gate — zero hits
-grep -nEi "over the past (decade|two decades)|in recent years,|it is worth noting|plays a (crucial|pivotal) role|has garnered significant attention|delves into|a testament to|近年来，?随着|日益受到(广泛)?关注" paper_draft.md
+grep -nEi "over the past ((few|several|two|three) )?(decades?|years)|in recent years,|it is worth noting|plays a (crucial|pivotal) role|has garnered significant attention|delves into|a testament to|众所周知|近年来，?随着|日益受到(广泛)?关注" paper_draft.md
 ```
 
 Then: work through the binding reporting checklist item by item
 ([references/REPORTING_CHECKLISTS.md](references/REPORTING_CHECKLISTS.md));
 assemble the submission pack — title page, abstract in the venue's format,
-keywords, cover letter, author contributions/COflicts
+keywords, cover letter, author contributions (CRediT) / conflicts
 ([references/SUBMISSION_PACK.md](references/SUBMISSION_PACK.md)).
 
 ## Reference Files
@@ -117,11 +122,11 @@ Read **only** the file for the phase you are in.
 | File | Read when |
 |------|-----------|
 | [references/STRUCTURE_GUIDE.md](references/STRUCTURE_GUIDE.md) | Phase 3 — IMRaD construction per study type |
-| [references/CITATION_INTEGRITY.md](references/CITATION_INTEGRITY.md) | Phase 2/4 — the five rules in journal-style form |
+| [references/CITATION_INTEGRITY.md](references/CITATION_INTEGRITY.md) | Phase 2/4/5 — the five rules + Phase 5 reconciliation gate |
 | [references/REPORTING_CHECKLISTS.md](references/REPORTING_CHECKLISTS.md) | Phase 1/5 — checklist selection + item-by-item pass |
 | [references/WRITING_STYLE.md](references/WRITING_STYLE.md) | Phase 4 — register, tense, cohesion, AI-tells |
 | [references/SUBMISSION_PACK.md](references/SUBMISSION_PACK.md) | Phase 5 — abstract/cover letter/reproducibility statement |
-| [references/QUALITY_CHECKLIST.md](references/QUALITY_CHECKLIST.md) | Phase 5 — final gates incl. results_ledger reconciliation |
+| [references/QUALITY_CHECKLIST.md](references/QUALITY_CHECKLIST.md) | Phase 2/5 — Phase 2 reads the ledger schema; Phase 5 runs the gates |
 | [assets/paper_scaffold_en.md](assets/paper_scaffold_en.md) | Phase 4 — English skeleton |
 | [assets/paper_scaffold_zh.md](assets/paper_scaffold_zh.md) | Phase 4 — 中文骨架 |
 

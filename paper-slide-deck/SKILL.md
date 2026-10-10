@@ -306,9 +306,9 @@ Then apply template using `apply-template.ts`.
 
 Text-to-image **bakes text into pixels and will garble spelling, math symbols, and
 numbers** — this is the single biggest risk of this skill. Do not ship unchecked.
-(This is this skill's instance of the repository's shared citation-integrity core:
-numbers and claims must match the source, and failures surface as visible flags —
-never silent substitutes.)
+(This is this skill's instance of the repository's shared citation-integrity core
+[`docs/citation-integrity-core.md`]: numbers and claims must match the source, and
+failures surface as visible flags — never silent substitutes.)
 
 **For every generated slide** (especially any with equations, tables, key numbers,
 or non-Latin text), use `Read` to open the PNG and visually check:

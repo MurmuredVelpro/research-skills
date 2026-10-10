@@ -36,6 +36,8 @@ than one fake. Count follows the argument; there is no quota and no padding.
 Literal markers the gates scan for (each variant uses the subset that applies):
 
 - `[UNVERIFIED: …]` — a citation or value could not be resolved against a first source.
+- `[PENDING: …]` — a load-bearing number the user has not supplied yet (research-paper's
+  results-first discipline: `[PENDING]`, never a plausible fill).
 - `[MISSING: …]` — a referenced asset could not be extracted/located.
 - `[CHECK]` — a generated slide failed visual proofreading after retries.
 - `[REDRAWN]` / `[GENERATED]` — an asset is not from the source and is labeled as such.

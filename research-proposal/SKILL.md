@@ -170,8 +170,8 @@ Verify against [references/QUALITY_CHECKLIST.md](references/QUALITY_CHECKLIST.md
 - `grep -nE "xxx|XXXX|\[TBD\]|\[UNVERIFIED[^\]]*\]|10\.xxxx|doi:10\.[a-z]+/x|forthcoming DOI|\[.*占位.*\]"` returns 0 hits — or every remaining `[UNVERIFIED]` has been explicitly disclosed to the user and never presented as confirmed. (This regex is the single canonical version; [references/CITATION_INTEGRITY.md](references/CITATION_INTEGRITY.md) links to it rather than restating a variant.)
 - Every in-text citation reconciles with the References list (no orphans either direction).
 - At least 20% of references, and every quantitative/directional claim, spot-checked against sources.
-- **AI-tell gate**: `grep -nEi "over the past (decade|two decades)|in recent years,|it is worth noting|plays a (crucial|pivotal) role|has garnered significant attention|delves into|a testament to|近年来，?随着|日益受到(广泛)?关注"` returns 0 hits in the body (see Core Principles; the same patterns are banned in every reference file and scaffold).
-- No placeholder `[brackets]` or "TBD" left in the body — **except** applicant-specific scaffold fields the user must personalize (`[University/Institution Name]`, `[Your Field]`, `[Month Year]`) and `[Figure N Suggestion]` labels, which are intentional and may remain.
+- **AI-tell gate**: `grep -nEi "over the past ((few|several|two|three) )?(decades?|years)|in recent years,|it is worth noting|plays a (crucial|pivotal|vital) role|sheds light on|paves the way|ever-evolving|has garnered significant attention|delves into|a testament to|众所周知|近年来，?随着|日益受到(广泛)?关注"` returns 0 hits in the body (see Core Principles; the same patterns are banned in every reference file and scaffold).
+- No placeholder `[brackets]` or "TBD" left in the body — **except** applicant-specific scaffold fields the user must personalize (`[University/Institution Name]`, `[Your Field]`, `[Month Year]`; 中文 scaffold 表头的 `[所属学科]`、`[大学/研究机构名称]`、`[年月]` 等同类字段) and `[Figure N Suggestion]` labels, which are intentional and may remain.
 
 Offer format conversion:
 

@@ -56,6 +56,30 @@ class PlaceholderGateContract(unittest.TestCase):
                 self.assertTrue(re.search(pattern, "Value [PENDING]."))
 
 
+class AiTellGateContract(unittest.TestCase):
+    def _gate_pattern(self) -> str:
+        text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        match = re.search(r'grep -nEi "([^"]*over the past[^"]*)"', text)
+        assert match, "SKILL.md Phase 5 应包含 AI-tell 门禁 grep"
+        return match.group(1)
+
+    def test_gate_covers_the_banned_opening_family(self):
+        """WRITING_STYLE 禁用表列出的家族必须全部被门禁命中（RP-04）。"""
+        pattern = self._gate_pattern()
+        for phrase in (
+            "Over the past few years, segmentation has improved.",
+            "Over the past decade, X has emerged.",
+            "over the past three decades",
+            "众所周知",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertTrue(re.search(pattern, phrase, re.I), phrase)
+
+    def test_gate_keeps_legitimate_numbered_spans_out(self):
+        pattern = self._gate_pattern()
+        self.assertIsNone(re.search(pattern, "over the past 5 years, incidence fell."))
+
+
 class CitationIntegrityContract(unittest.TestCase):
     def test_variant_declares_derivation_from_the_shared_core(self):
         text = (ROOT / "references/CITATION_INTEGRITY.md").read_text(encoding="utf-8")
