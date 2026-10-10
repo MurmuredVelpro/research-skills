@@ -22,7 +22,7 @@ This workflow targets a **directed pool of ~25–50 verified sources** — the r
 
 In those cases, run the **lit-search** skill first (same repository) and consume its outputs instead of re-searching here:
 
-- `dois.md` / `references.bib` — the verified inclusion set, already deduplicated across sources;
+- `dois.md` / `references.md` — the verified inclusion set, already deduplicated across sources (`references.bib` only when lit-search ran with `--bibtex`);
 - `tier_report.md` / `ranked.csv` — metadata-quality annotation for prioritizing reads;
 - its PRISMA-style counts — cite-able evidence for coverage claims in the proposal.
 

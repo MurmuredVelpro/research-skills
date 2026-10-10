@@ -475,3 +475,38 @@ def scan_duplicate_dois(references: ReferenceSet) -> list[Finding]:
         for doi, identifiers in doi_to_ids.items()
         if len(identifiers) > 1
     ]
+
+
+def scan_route_banned_phrases(route: str, body_lines: list[SourceLine]) -> list[Finding]:
+    """narrative/method-survey 的禁用语（WORKFLOW.md）：这些术语会让读者以为
+    拿到了系统性检索的保证，而该路由没有协议、没有 PRISMA 流程可查。
+
+    仅扫描标题之后的正文；引用书目里的期刊名（Systematic Reviews 等）
+    不在扫描范围。
+    """
+    if route not in {"narrative", "method-survey"}:
+        return []
+    banned = (
+        (r"\bsystematic\s+search\w*\b", "systematic search"),
+        (r"\bcomprehensive\s+search\w*\b", "comprehensive search"),
+        (r"\bPRISMA\b", "PRISMA"),
+        (r"\bincluded\s+studies\b", "included studies"),
+        (r"\bquantitative\s+pooling\b", "quantitative pooling"),
+        (r"系统性检索|全面检索|纳入研究|定量合并", "中文对应术语"),
+    )
+    findings: list[Finding] = []
+    for source in body_lines:
+        for pattern, label in banned:
+            if re.search(pattern, source.text, flags=re.I):
+                findings.append(
+                    Finding(
+                        "medium",
+                        "route_banned_phrase",
+                        source.number,
+                        f"'{label}' is banned in a {route} manuscript (WORKFLOW.md): "
+                        "it implies a systematic-search guarantee this route does not have. "
+                        "Rewrite in narrative terms or re-decide the route.",
+                        line_excerpt(source.text),
+                    )
+                )
+    return findings

@@ -340,7 +340,7 @@ Field contract:
 | Field | Requirement |
 |---|---|
 | claim_id | Stable project-local ID; reuse it when one claim has multiple source rows |
-| section | Stable manuscript section anchor |
+| section | Stable manuscript section anchor. Matching rules (auditor-enforced): the manuscript heading with its numbering stripped (e.g. `## 3.2 Results` → `Results`), compared case-insensitively; text before the first heading anchors as `preamble` |
 | claim_text | Atomic claim, not an entire paragraph; use one metric, one direction, one material claim type, and its own citekey set per row |
 | claim_type | factual, quantitative, comparative, directional, priority, regulatory, reimbursement, availability, or synthesis |
 | citekey | Existing key in references.bib |

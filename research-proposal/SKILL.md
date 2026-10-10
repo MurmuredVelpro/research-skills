@@ -8,7 +8,8 @@ description: >
   proposal", "研究计划书", "开题报告", "写博士研究计划". The literature-corpus half
   of 开题报告 (exhaustive, reproducible retrieval with recall evidence) belongs
   to the lit-search skill; this skill consumes its outputs (dois.md /
-  references.bib). Not for backward-looking literature reviews / 综述 / surveys
+  references.md — the default formatted list; references.bib only when lit-search ran
+  with --bibtex). Not for backward-looking literature reviews / 综述 / surveys
   (use medical-imaging-review). For grant applications (国自然/NSF) it drafts and
   structures the CONTENT (立项依据/研究内容/…) but never fills a funder's own
   form system or budget tables.
@@ -30,7 +31,6 @@ allowed-tools:
   - mcp__zotero__zotero_get_item_fulltext
   - mcp__zotero__zotero_get_annotations
   - mcp__zotero__zotero_get_notes
-  - mcp__zotero__zotero_search_notes
   - mcp__zotero__zotero_semantic_search
   - mcp__zotero__zotero_advanced_search
 ---
@@ -60,7 +60,7 @@ The default structure below targets **PhD/doctoral proposals and academic resear
 | Request | Structure |
 |---|---|
 | PhD/doctoral proposal, research plan, 研究计划书 | Default structure (this skill) |
-| 开题报告 (thesis proposal / defense) | Default structure, but weight Literature Review and feasibility/existing-basis more heavily; keep methodology concrete |
+| 开题报告 (thesis proposal / defense) | Default structure, but weight Literature Review more heavily and open Methodology with a **研究基础/可行性分析 (existing basis & feasibility)** subsection — the reviewer's prior work, preliminary results, and access to data/compute; keep methodology concrete |
 | Humanities dissertation proposal | Default + a **Chapter Outline** section (see [references/DOMAIN_TEMPLATES.md](references/DOMAIN_TEMPLATES.md)) |
 | 基金申请书 / 国自然 / NSF grant | **Different structure** (立项依据 / 研究内容与目标 / 研究方案与可行性 / 研究基础与工作条件). This skill drafts the *content* adapted to the funder's required sections — it does **not** fill the funder's own form system, budget tables, or NSF-specific fields (Intellectual Merit / Broader Impacts). Tell the user the default 5-section template is not a grant form; adapt headings to the funder's required template and confirm with the user before writing |
 
@@ -77,7 +77,7 @@ Use `AskUserQuestion` to collect:
 - **Target word count** — default ~3,000 words; range 2,000–4,000 (humanities may extend to ~10,000).
 - **Optional** — target institution/supervisor; existing materials or a Zotero library to draw on.
 
-If the topic is too vague to scope a methodology, ask focused clarifying questions before proceeding.
+If the topic is too vague to scope a methodology, ask focused clarifying questions before proceeding. **Headless run** (no interactive user, e.g. called from another agent's pipeline): extract the requirements above from the calling prompt instead of asking, and record them as **locked assumptions** in the outline the way Phase 3 does — never invent a requirement the prompt did not state.
 
 ---
 

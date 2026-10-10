@@ -55,8 +55,7 @@ A deliverable ships with flags **only** after the user has seen and accepted eac
 | research-paper | `references/CITATION_INTEGRITY.md` | journal styles (author–year or numeric per venue) | Phase 2 verification + Phase 5 grep gates & results_ledger reconciliation |
 
 Variant-specific extensions stay in the variant: the medical ledger's split/comparator/
-uncertainty columns, the proposal's (Author, Year) reconciliation regex, the slides' figure
-provenance rules, and the T2I garble protocol are **not** part of the core.
+uncertainty columns, the proposal's (Author, Year) reconciliation regex **and its secondary-source rule (Rule 6)**, the slides' figure provenance rules, and the T2I garble protocol are **not** part of the core.
 
 ## When a fifth variant appears
 

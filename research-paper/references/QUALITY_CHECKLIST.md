@@ -11,6 +11,14 @@ the proposal skill: your own numbers are the fabrication risk here.
       explicitly disclosed and never presented as real:
       `grep -nE "xxx|XXXX|\[TBD\]|\[PENDING|\[UNVERIFIED[^\]]*\]|10\.xxxx|doi:10\.[a-z]+/x" paper_draft.md`
 - [ ] AI-tell gate returns 0 hits (regex in SKILL.md Phase 5).
+- [ ] **Reporting-checklist artifact**: `checklist_<name>.md` exists next to the draft
+      and has no unresolved rows:
+      ```bash
+      ls checklist_*.md && ! grep -nE "\[ \]\s*$" checklist_*.md
+      ```
+      (`grep` finding an unchecked `- [ ]` box fails the `!` — every binding-checklist
+      row must be answered, even if the answer is a documented gap.)
+
 - [ ] **results_ledger reconciliation**: every number in the manuscript's own
       prose — Abstract, Methods (n=, doses, hyperparameters), Results, and
       Discussion restatements — appears in `results_ledger.csv` with the same
@@ -38,7 +46,9 @@ the proposal skill: your own numbers are the fabrication risk here.
 - [ ] Citation reconciliation: in-text ↔ bibliography 1:1 both directions
       (see CITATION_INTEGRITY.md).
 - [ ] Abbreviation list complete: every abbreviation defined at first use.
-- [ ] Abstract word count within the venue limit (`wc -w`).
+- [ ] Abstract word count within the venue limit — English `wc -w`;
+      **Chinese counts characters, not whitespace words**: `wc -m`
+      (`wc -w` reads a 19-character Chinese sentence as 2 "words").
 
 ## results_ledger.csv (built in Phase 2, checked in Phase 5)
 

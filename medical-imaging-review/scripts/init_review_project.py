@@ -578,6 +578,12 @@ def initialize_project(
     if target.exists() or target.is_symlink():
         raise ProjectInitError(f"refusing to overwrite existing path: {target}")
 
+    # 清理被硬杀（SIGKILL）遗留的陈旧 staging：except 分支只清本次的，
+    # mkdir 与 rename 之间被杀会留下隐藏目录，后续运行既不识别也不清理
+    for stale in review_root.glob(".initializing-*"):
+        if stale.is_dir() and not stale.is_symlink():
+            shutil.rmtree(stale, ignore_errors=True)
+
     staging = review_root / f".initializing-{resolved_id}-{uuid.uuid4().hex[:8]}"
     staging.mkdir(exist_ok=False)
     try:

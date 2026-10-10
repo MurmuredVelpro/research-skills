@@ -1930,3 +1930,27 @@ class Round3AuditHardeningTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RouteBannedPhraseTests(unittest.TestCase):
+    def test_narrative_body_with_systematic_vocab_flags_medium(self):
+        """第三轮评审 MIR-09：narrative/method-survey 的禁用语此前只在
+        title/abstract 的路由推断里查，正文零检查。"""
+        body = source_lines(
+            "# A Narrative Review\n\n## Findings\n\n"
+            "We performed a comprehensive search and report the PRISMA flow "
+            "across included studies [@a]."
+        )
+        findings = audit.scan_route_banned_phrases("narrative", body)
+        labels = [f.message for f in findings]
+        self.assertTrue(any("comprehensive search" in label for label in labels))
+        self.assertTrue(any("PRISMA" in label for label in labels))
+        self.assertTrue(any("included studies" in label for label in labels))
+        self.assertTrue(all(f.severity == "medium" for f in findings))
+
+    def test_systematic_route_is_not_scanned_for_banned_phrases(self):
+        body = source_lines(
+            "# A Systematic Review\n\n## Results\n\n"
+            "The PRISMA flow across included studies is shown [@a]."
+        )
+        self.assertEqual([], audit.scan_route_banned_phrases("systematic", body))

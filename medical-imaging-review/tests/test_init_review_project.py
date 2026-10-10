@@ -230,3 +230,20 @@ class InitReviewProjectTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_stale_initializing_staging_is_swept_by_a_later_init(self) -> None:
+        """第三轮评审 MIR-13：mkdir 与 rename 之间被硬杀会留下
+        .initializing-* 残骸，后续运行既不识别也不清理。"""
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            stale = root / "review_project" / ".initializing-leftover-deadbeef"
+            stale.mkdir(parents=True)
+            (stale / "review_config.yaml").write_text("junk", encoding="utf-8")
+            target = MODULE.initialize_project(
+                root, "ccta-review", "narrative", project_id=PROJECT_ID
+            )
+            self.assertTrue(target.exists())
+            self.assertFalse(stale.exists(), "陈旧 staging 应被清走")
+            self.assertEqual(
+                [], list((root / "review_project").glob(".initializing-*"))
+            )

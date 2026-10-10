@@ -86,7 +86,7 @@ for [practical application].
 
 ---
 
-## 1. Introduction (500-800 words, 15-20%)
+## 1. Introduction (500-750 words, 15-20% — subsection caps sum to 750)
 
 ### Purpose
 Establish context, articulate the problem, and present research objectives.
@@ -149,7 +149,7 @@ Specific objectives include:
 
 ---
 
-## 2. Literature Review (500-1000 words, 20-25%)
+## 2. Literature Review (550-1000 words, 20-25% — subsection floors sum to 550)
 
 ### Purpose
 Demonstrate knowledge of the field, identify research gap, and position your study.
@@ -282,11 +282,15 @@ Demonstrate feasibility and planning competence.
 ```markdown
 | Phase | Duration | Activities | Deliverables |
 |-------|----------|------------|--------------|
-| 1 | Months 1-6 | Literature review, Design | Review paper |
-| 2 | Months 7-18 | Data collection | Dataset |
-| 3 | Months 19-30 | Analysis | Draft chapters |
-| 4 | Months 31-36 | Writing, Revision | Thesis |
+| 1 | Months 1-9 | Literature review, Design | Review paper |
+| 2 | Months 10-27 | Data collection | Dataset |
+| 3 | Months 28-39 | Analysis | Draft chapters |
+| 4 | Months 40-51 | Writing | Thesis draft |
+| 5 | Months 52-57 | Revision, Defense | Defended thesis |
 ```
+
+(Format example only — phase durations follow the standard table below; the
+36-month example previously contradicted Writing's 9-12 month floor.)
 
 **Gantt Chart Description:**
 If including visual, describe key overlaps and dependencies.
