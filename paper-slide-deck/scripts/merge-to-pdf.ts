@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "fs";
 import { join, basename, resolve } from "path";
 
 interface SlideInfo {
@@ -190,7 +190,7 @@ export function validateSlideNumbers(slides: SlideInfo[]): {
   return { fatal, warnings };
 }
 
-async function createPdf(PDFDocument: any, slides: SlideInfo[], outputPath: string) {
+export async function createPdf(PDFDocument: any, slides: SlideInfo[], outputPath: string) {
   const pdfDoc = await PDFDocument.create();
   pdfDoc.setAuthor("paper-slide-deck");
   pdfDoc.setSubject("Generated Slide Deck");
@@ -216,7 +216,9 @@ async function createPdf(PDFDocument: any, slides: SlideInfo[], outputPath: stri
   }
 
   const pdfBytes = await pdfDoc.save();
-  await Bun.write(outputPath, pdfBytes);
+  // writeFileSync 而非 Bun.write：这是全 scripts 曾唯一的 bun 专属 API，
+  // node 运行时会在全部图片 embed 完成后于最后一步崩溃、PDF 不产出
+  writeFileSync(outputPath, pdfBytes);
 
   console.log(`\nCreated: ${outputPath}`);
   console.log(`Total pages: ${slides.length}`);
