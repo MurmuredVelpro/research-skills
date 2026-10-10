@@ -99,7 +99,9 @@ python scripts/verify_pptx_parity.py <deck.json> <deck.pptx>   # PPTX preserves 
   detection runs ~95–100%; on dense IEEE/TPAMI two-column pages with many small sub-figures it drops
   to ~75% and the region-grow can over-capture. Crucially, low-confidence assets are **flagged for
   you to confirm at CKPT-1** — never silently wrong — and a mis-crop is a one-line manual fix.
-  Stress-tested over 9 cross-layout papers: **0 crashes, 98% of figures localized, ~92% usable as-is.**
+  Stress-tested across cross-layout papers with **0 crashes**; on the corpus checked in under
+  `out/*/figures.json` the figure localization rate is reproducibly **60/61 ≈ 98.4%** (recount
+  with `python3 - <<'PY'` over those files; tables are excluded by design, see below).
 - **Tables are rebuilt as data, not cropped** — by design (they become real OOXML / `<table>`), so a
   table without a figure bbox is expected, not a failure.
 - **Scanned PDFs need OCR first** (not built). **Zotero citations** are an agent-runtime MCP step;

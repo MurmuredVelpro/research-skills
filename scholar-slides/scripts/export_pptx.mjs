@@ -113,7 +113,10 @@ function buildSlide(pptx, slide, s, ctx) {
   } else if (L === "assertion-evidence") {
     if (s.figure) {
       const p = figurePath(ctx.deckJsonDir, s.figure.src);
+      // 缺图必须出声：fresh clone 的 figures/ 是空的，静默跳过会把「图没准备」
+      // 藏进一份看起来成功的导出（parity 门会兜住，但导出者自己也该立刻知道）
       if (fs.existsSync(p)) slide.addImage({ path: p, x: 2.0, y: 1.95, w: 9.3, h: 4.0, sizing: { type: "contain", w: 9.3, h: 4.0 } });
+      else console.warn(`WARN: figure file missing, slide exports without it: ${p}`);
       const cap = (s.figure.caption || "") + (s.figure.cite ? ` [${s.figure.cite}]` : "");
       if (cap.trim()) slide.addText(cap, { x: 1.0, y: 6.05, w: 11.3, h: 0.4, fontSize: 11, color: INK_SOFT, align: "center", fontFace: SANS });
     }
@@ -147,6 +150,7 @@ function buildSlide(pptx, slide, s, ctx) {
     if (s.figure) {
       const p = figurePath(ctx.deckJsonDir, s.figure.src);
       if (fs.existsSync(p)) slide.addImage({ path: p, x: 6.9, y: 2.05, w: 5.5, h: 4.4, sizing: { type: "contain", w: 5.5, h: 4.4 } });
+      else console.warn(`WARN: figure file missing, slide exports without it: ${p}`);
     } else if (s.points2) slide.addText(bulletText(s.points2), { x: 6.9, y: 2.05, w: 5.6, h: 4.5, fontSize: 16, color: INK, fontFace: SANS, valign: "top" });
     sourceLine(slide, s);
   } else if (L === "critique-concerns") {

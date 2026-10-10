@@ -308,6 +308,9 @@ def main():
             print(f"  - {name}")
         print("Re-run this script to retry only the failed slides "
               "(completed slides are skipped automatically).")
+        # 失败必须反映在退出码上：exit 0 会让下游 merge 放行缺页 deck，
+        # 而 merge 的间隙警告只会把它归因于「删除过幻灯片」误导排查方向
+        sys.exit(1)
 
     # List all slides in output directory
     all_slides = list_existing_slides(output_dir)

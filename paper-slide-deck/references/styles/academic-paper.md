@@ -1,6 +1,9 @@
 # academic-paper
 
-Professional academic presentation style for conference talks, thesis defense, and research presentations
+Professional academic style for paper-derived reading decks — journal-club style
+sharing, reading notes, and paper summaries. (For a **live** talk — defense or
+conference delivery where equations and numbers must stay exact — route to the
+scholar-slides skill instead of this style.)
 
 ## Design Aesthetic
 

@@ -160,9 +160,10 @@ Before outline creation, confirm:
 - [ ] Source material fully processed
 - [ ] No important content overlooked
 
-## 7. Academic Presentation Analysis
+## 7. Academic Paper Analysis
 
-For conference talks, thesis defense, and research presentations.
+For paper-derived reading decks — sharing and
+reading notes, not live delivery (live talks belong to scholar-slides).
 
 ### Paper Structure to Slide Mapping
 
@@ -177,15 +178,19 @@ For conference talks, thesis defense, and research presentations.
 | Conclusions | Summary + Future Work | `contributions`, `bullet-list` |
 | References | Key Citations | `references-list` |
 
-### Academic Slide Count Guidelines
+### Reading-Deck Length Guidelines
 
-| Talk Duration | Recommended Slides | Pace |
-|---------------|-------------------|------|
-| 5 min (spotlight) | 5-7 slides | ~1 min/slide |
-| 10 min (short) | 8-12 slides | ~1 min/slide |
-| 15 min (standard) | 12-18 slides | ~1 min/slide |
-| 20 min (full) | 15-22 slides | ~1 min/slide |
-| 30+ min (invited) | 25-35 slides | ~1 min/slide |
+Reading decks are paced by content density, not speaking minutes (there is no live
+talk to pace):
+
+| Content Volume | Recommended Slides |
+|---------------|--------------------|
+| Short paper / single result | 5-8 slides |
+| Standard conference paper | 8-15 slides |
+| Dense paper / survey coverage | 15-25 slides |
+
+Rule of thumb: one slide per major claim or figure; split when a slide needs more
+than ~6 visual elements.
 
 ### Citation Handling
 
@@ -271,9 +276,12 @@ For each detected figure:
 
 | Confidence | Action |
 |------------|--------|
-| **High** (>80%) | Auto-map and extract |
-| **Medium** (50-80%) | Auto-map, flag for review |
-| **Low** (<50%) | Skip, use AI generation |
+| **High** — ≥2 specific keywords hit (figure/table caption, section cue) | Auto-map and extract |
+| **Medium** — exactly 1 specific keyword | Auto-map, list the slide in the Step 3 confirmation table for review |
+| **Low** — only generic words | Skip, use AI generation |
+
+(These are qualitative rules driven by the keyword algorithm above — no percentage
+scores are computed anywhere in this skill; don't quote numbers it can't back.)
 
 ### Figure Caption Keywords
 
@@ -358,7 +366,7 @@ config=types.GenerateContentConfig(
 
 **Network Issues**:
 - Server disconnections are common for large image generation
-- Implement retry logic with exponential backoff (3 retries recommended)
+- Implement retry logic with backoff (3 retries recommended)
 - Wait 5-15 seconds between retries
 
 **Optimization**:
