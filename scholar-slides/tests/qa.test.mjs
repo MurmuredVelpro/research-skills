@@ -169,3 +169,35 @@ test("static HTML extractors", () => {
   assert.deepEqual(extractImgSrcs(html), ["figures/f1.png"]);
   assert.ok(findUnrenderedMath(html).length >= 1);
 });
+
+// Round-3 review SS-01: equations[].latex, two-column s.text, and s.eyebrow all
+// render on screen but were never collected — numbers inside them silently
+// passed the grounding gate (math.md: "numbers inside equations are grounded
+// like any other number").
+test("collectFields covers equations, two-column text, and eyebrow", () => {
+  const deck = {
+    slides: [
+      { layout: "equation", eyebrow: "Preliminary 42", equations: [{ latex: "L = 99.9\\,\\mathrm{dB}" }] },
+      { layout: "two-column", text: "Recall reaches 87.7 on the held-out set" },
+    ],
+  };
+  const fields = collectFields(deck);
+  assert.ok(fields.some((f) => f.field === "eyebrow" && f.text.includes("42")));
+  assert.ok(fields.some((f) => f.field.startsWith("equations[0].latex") && f.text.includes("99.9")));
+  assert.ok(fields.some((f) => f.field === "text" && f.text.includes("87.7")));
+});
+
+test("groundNumbers flags numbers hidden in equations, column text, and eyebrows", () => {
+  const deck = {
+    slides: [
+      { layout: "equation", eyebrow: "Preliminary 42", equations: [{ latex: "L = 99.9" }] },
+      { layout: "two-column", text: "Recall reaches 87.7" },
+    ],
+  };
+  const findings = groundNumbers(deck, "");
+  const flagged = findings.map((f) => f.text || f.field).join(" ");
+  const lines = JSON.stringify(findings);
+  assert.ok(lines.includes("99.9"), "equation latex must be grounded");
+  assert.ok(lines.includes("87.7"), "two-column text must be grounded");
+  assert.ok(lines.includes("42"), "eyebrow must be grounded");
+});

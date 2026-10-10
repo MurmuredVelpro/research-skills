@@ -45,7 +45,12 @@ async function renderEquationPNGs(equations, outDir) {
       await page.setContent(html, { waitUntil: "networkidle" });
       const el = await page.$("#eq");
       const box = el && (await el.boundingBox());
-      if (!el || !box) continue; // guard: skip an equation that failed to lay out, keep exporting
+      if (!el || !box) {
+        // 静默 continue 会让「渲染失败的公式」在汇总里仍被计为已渲染
+        console.warn(`WARN: equation ${e.slide}-${e.eq} failed to lay out and was skipped — ` +
+          `the slide will export without this equation image.`);
+        continue;
+      }
       const out = path.join(outDir, `eq-${e.slide}-${e.eq}.png`);
       await el.screenshot({ path: out, omitBackground: true });
       map.set(`${e.slide}-${e.eq}`, { path: out, w: box.width, h: box.height });
@@ -178,11 +183,17 @@ export async function exportPptx(deckJsonPath, outPath) {
     if (s.speaker_notes) slide.addNotes(String(s.speaker_notes));
   });
 
-  const out = outPath || path.join(deckJsonDir, "deck.pptx");
+  // 默认写 <dir>/deck/deck.pptx：与 run_benchmark 的 parity 探测路径和其余
+  // 构建产物（html/pdf）同目录。此前默认落在 <dir>/deck.pptx，按官方重建
+  // 命令（不带输出参数）导出后基准行显示 no-pptx、parity 门静默跳过。
+  const out = outPath || path.join(deckJsonDir, "deck", "deck.pptx");
+  fs.mkdirSync(path.dirname(out), { recursive: true });
   await pptx.writeFile({ fileName: out });
 
   const nFig = (deck.slides || []).filter((s) => s.figure).length;
-  return { out, nSlides: (deck.slides || []).length, nEquationsRasterized: equations.length, nFigures: nFig };
+  // 数实际渲染出的位图（eqMap.size），不是收集到的公式数——无 Chromium 或
+  // 逐条失败时两者不同，汇总行必须如实
+  return { out, nSlides: (deck.slides || []).length, nEquationsRasterized: eqMap.size, nFigures: nFig };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
