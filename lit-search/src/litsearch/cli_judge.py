@@ -559,7 +559,14 @@ def triage_command(
         fg=typer.colors.GREEN,
     )
 
-    candidates = tiebreak_candidates(decisions, known, loaded, profile)
+    candidates = tiebreak_candidates(decisions, known, loaded, profile, by_key)
+    retracted_queued = sum(1 for item in queued if item.is_retracted)
+    if retracted_queued:
+        typer.secho(
+            f"\n注意：队列中有 {retracted_queued:,} 条撤稿记录——机器不会裁定它们，"
+            f"必须人工定谳（引用与否由你决定并自担其责）。",
+            fg=typer.colors.YELLOW,
+        )
     if not auto_resolve:
         if candidates:
             typer.echo(

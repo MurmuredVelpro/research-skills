@@ -250,6 +250,36 @@ class TestReclassify:
         assert "窗口内" in result.output
         assert len(respx_mock.calls) == before  # 重判不该发一次网络请求
 
+    def test_refreshes_manifest_counts_so_verify_stays_green(
+        self, seeded_run, topic_path, runs_root, respx_mock
+    ):
+        """实测事故（第三轮评审 LS-02）：reclassify 只重建窗口状态计数，
+        canonical_records 留旧值——重判让语料规模变化后，自己刚产出的
+        run 过不了 lit verify 的 corpus-count 检查。"""
+        records = seeded_run.read_jsonl("records.jsonl")
+        clone = dict(records[0])
+        clone["source"] = "europepmc"
+        clone["source_id"] = "extra-1"
+        clone["title"] = "重判后新判入的独立论文"
+        clone["identifiers"] = {"doi": "10.55555/extra.1"}
+        clone["found_by"] = []
+        seeded_run.write_jsonl("records.jsonl", [*records, clone])
+
+        result = runner.invoke(
+            app,
+            ["reclassify", "t", "--topic", str(topic_path), "--runs-root", str(runs_root)],
+        )
+        assert result.exit_code == 0, result.output
+
+        manifest = seeded_run.load_manifest()
+        corpus = seeded_run.read_jsonl("corpus.jsonl")
+        assert manifest["counts"]["canonical_records"] == len(corpus), (
+            "重判后 canonical_records 必须等于重写出的 corpus 规模"
+        )
+
+        verified = runner.invoke(app, ["verify", "t", "--runs-root", str(runs_root)])
+        assert verified.exit_code == 0, verified.output
+
     def test_a_run_without_records_is_reported_not_crashed(self, tmp_path, topic_path, runs_root):
         empty = Run.create(runs_root, "t", "20200101T000000Z")
         empty.write_text("manifest.json", json.dumps({"topic_sha256": "x", "counts": {}}))
@@ -1604,6 +1634,44 @@ class TestTriage:
         assert all(item["adjudicated_by"] == "jev:jev-1.13.0" for item in resolved)
         assert all(item["decision"] == "include" for item in resolved)
         assert all("机器裁定" in item["reason"] for item in resolved)
+
+    def test_auto_resolve_never_adjudicates_a_retracted_record(
+        self, seeded_run, topic_path, runs_root, profile_path, jev_key, respx_mock
+    ):
+        """实测事故（第三轮评审 LS-03）：通道分歧 + 判定器高分 的撤稿记录
+        会被 --auto-resolve 机器裁定为 include——违反 SKILL.md 声明的不变量
+        「机器不得定谳撤稿文献，人工裁定可以」。"""
+        keys = [
+            item["key"]
+            for item in seeded_run.read_jsonl("corpus.jsonl")
+            if item["window_status"] == "in_window"
+        ]
+        rows = seeded_run.read_jsonl("corpus.jsonl")
+        for row in rows:
+            if row["key"] == keys[0]:
+                row["is_retracted"] = True
+        seeded_run.write_jsonl("corpus.jsonl", rows)
+        decisions = {key: self._disagreement(key) for key in keys}
+        _write_round(seeded_run, 1, decisions, provider="api.deepseek.com")
+
+        respx_mock.post(JEV_URL).mock(
+            return_value=httpx.Response(200, json=_jev_reply({"I1": 0.95, "X1": 0.01}))
+        )
+
+        result = runner.invoke(
+            app, self._cmd(topic_path, runs_root, profile_path, "--auto-resolve")
+        )
+
+        assert result.exit_code == 0, result.output
+        payload = json.loads((seeded_run.root / "screening_round_2.json").read_text())
+        adjudicated = {
+            key: item
+            for key, item in payload["decisions"].items()
+            if item["adjudicated_by"]
+        }
+        assert keys[0] not in adjudicated, "撤稿记录不得被机器定谳"
+        queue = (seeded_run.root / "human_queue.csv").read_text(encoding="utf-8")
+        assert keys[0] in queue, "撤稿记录必须留在人工队列"
 
     def test_the_machine_round_lands_in_the_audit_trail(
         self, queued_run, topic_path, runs_root, profile_path, jev_key, respx_mock

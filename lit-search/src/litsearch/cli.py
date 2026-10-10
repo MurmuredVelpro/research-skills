@@ -371,7 +371,12 @@ def reclassify_command(
 
     canonical = deduplicate(records, loaded.window, loaded.window.date_priority)
 
-    counts: dict[str, int] = {}
+    counts: dict[str, int] = {
+        # 重判改写 corpus.jsonl，规模计数必须随之刷新——否则旧值残留，
+        # 自己刚产出的 run 过不了 lit verify 的 corpus-count 检查
+        "records_fetched": len(records),
+        "canonical_records": len(canonical),
+    }
     for item in canonical:
         key = item.window_status.value if item.window_status else "unknown"
         counts[key] = counts.get(key, 0) + 1

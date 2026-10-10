@@ -414,17 +414,24 @@ def tiebreak_candidates(
     rows: Mapping[str, ScoreRow],
     topic: Topic,
     profile: JevProfile,
+    records: Mapping[str, CanonicalRecord] | None = None,
 ) -> list[dict[str, str]]:
     """两个 LLM 通道互相矛盾、而判定器明确站在纳入一侧的那些记录。
 
     这不是让模型单方面拍板——是两个**不同模型族**达成一致，且只往可逆方向走。
     低置信度不算僵局（两个通道本就一致，没什么可打破的）；没有任何通道主张纳入
     也不算（那样 Jev 就是在独自拍板，不是打破僵局）。
+
+    撤稿记录永远不进候选：机器不得定谳撤稿文献（人工可以，并自担其责）——
+    它们留在人工队列，由 finish_screening_round 的撤稿通道强制上浮。
     """
     inclusions = [item.id for item in profile.active_inclusions(topic)]
     picked: list[dict[str, str]] = []
     for key, decision in decisions.items():
         if not decision.needs_human:
+            continue
+        record = (records or {}).get(key)
+        if record is not None and record.is_retracted:
             continue
         stances = {item.decision for item in decision.channel_verdicts}
         if len(stances) < 2 or Decision.INCLUDE not in stances:
