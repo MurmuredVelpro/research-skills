@@ -19,6 +19,59 @@ from .checks_config import *  # noqa: F401,F403
 from .checks_human import *  # noqa: F401,F403
 
 
+def validate_search_log(project_dir: Path) -> tuple[list[str], int, int, str | None]:
+    """Check every search/search_log.csv row is a reproducible executed search.
+
+    Returns (problems, valid row count, summed result_count, read error or None).
+    Shared by the formal-artifact audit and scripts/import_litsearch.py, which
+    re-checks the row it appends.
+    """
+    problems: list[str] = []
+    valid_searches = 0
+    total_search_results = 0
+    search_rows, search_error = read_csv_rows_exact(
+        project_dir / "search/search_log.csv", SEARCH_LOG_COLUMNS
+    )
+    if search_error:
+        return [search_error], 0, 0, search_error
+    for index, row in enumerate(search_rows, start=2):
+        if row_is_blank(row):
+            continue
+        required = (
+            "source",
+            "platform",
+            "coverage",
+            "search_date",
+            "strategy_file",
+            "result_count",
+            "export_file",
+            "searcher_id",
+        )
+        if not all(str(row.get(field, "")).strip() for field in required):
+            problems.append(f"search/search_log.csv row {index} is incomplete")
+            continue
+        try:
+            result_count = int(str(row.get("result_count", "")).strip())
+        except ValueError:
+            problems.append(f"search/search_log.csv row {index} result_count is not an integer")
+            continue
+        strategy = project_dir / str(row["strategy_file"]).strip()
+        export = project_dir / str(row["export_file"]).strip()
+        if result_count < 0 or not path_is_project_owned_file(project_dir, strategy):
+            problems.append(f"search/search_log.csv row {index} has no preserved strategy file")
+            continue
+        if not path_is_project_owned_file(project_dir, export):
+            problems.append(f"search/search_log.csv row {index} has no immutable source export")
+            continue
+        valid_searches += 1
+        total_search_results += result_count
+    if valid_searches == 0:
+        problems.append(
+            "search/search_log.csv must contain at least one reproducible executed-search row"
+        )
+    return problems, valid_searches, total_search_results, None
+
+
 def validate_formal_artifact_content(
     route: str, project_dir: Path
 ) -> list[Finding]:
@@ -45,49 +98,10 @@ def validate_formal_artifact_content(
             "risk_of_bias/decision_rules.md is empty, templated, or not substantive"
         )
 
-    search_rows, search_error = read_csv_rows_exact(
-        project_dir / "search/search_log.csv", SEARCH_LOG_COLUMNS
+    search_problems, valid_searches, total_search_results, search_error = validate_search_log(
+        project_dir
     )
-    if search_error:
-        problems.append(search_error)
-    else:
-        valid_searches = 0
-        total_search_results = 0
-        for index, row in enumerate(search_rows, start=2):
-            if row_is_blank(row):
-                continue
-            required = (
-                "source",
-                "platform",
-                "coverage",
-                "search_date",
-                "strategy_file",
-                "result_count",
-                "export_file",
-                "searcher_id",
-            )
-            if not all(str(row.get(field, "")).strip() for field in required):
-                problems.append(f"search/search_log.csv row {index} is incomplete")
-                continue
-            try:
-                result_count = int(str(row.get("result_count", "")).strip())
-            except ValueError:
-                problems.append(f"search/search_log.csv row {index} result_count is not an integer")
-                continue
-            strategy = project_dir / str(row["strategy_file"]).strip()
-            export = project_dir / str(row["export_file"]).strip()
-            if result_count < 0 or not path_is_project_owned_file(project_dir, strategy):
-                problems.append(f"search/search_log.csv row {index} has no preserved strategy file")
-                continue
-            if not path_is_project_owned_file(project_dir, export):
-                problems.append(f"search/search_log.csv row {index} has no immutable source export")
-                continue
-            valid_searches += 1
-            total_search_results += result_count
-        if valid_searches == 0:
-            problems.append(
-                "search/search_log.csv must contain at least one reproducible executed-search row"
-            )
+    problems.extend(search_problems)
 
     flow_counts, flow_error = validate_flow_counts(project_dir)
     if flow_error:

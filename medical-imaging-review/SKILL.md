@@ -18,15 +18,20 @@ Support exactly four route tokens across three methodological families:
 | Map available evidence and research gaps | scoping | Scoping review |
 | Answer a focused question without statistical pooling | systematic | Systematic review with qualitative synthesis |
 
-Do not perform a meta-analysis, network meta-analysis, individual-participant-data meta-analysis, or umbrella review with this skill. If the request requires pooled estimates, heterogeneity statistics, forest or funnel plots, review-overlap analysis, or review-level appraisal, stop and tell the user plainly that these need a specialized evidence-synthesis methods workflow which this environment does not provide — do not name a workflow you cannot see, and do not approximate those methods with prose or simple averaging. Do not approximate those methods with prose or simple averaging.
+Do not perform a meta-analysis, network meta-analysis, individual-participant-data meta-analysis, or umbrella review with this skill. If the request requires pooled estimates, heterogeneity statistics, forest or funnel plots, review-overlap analysis, or review-level appraisal, stop and tell the user plainly that these need a specialized evidence-synthesis methods workflow which this environment does not provide — do not name a workflow you cannot see, and do not approximate those methods with prose or simple averaging.
 
 **Corpus hand-off with lit-search.** The retrieval half of any route (exhaustive,
 recall-evidenced searching) belongs to the **lit-search** skill: run it first, then consume
 its `dois.md` / `references.md` (and `references.bib` with `--bibtex`) as the candidate
-pool. Copy the imported records into this project's `search/exports/` as an immutable
-export (never edit in place), record the lit-search run id and its PRISMA counts in
-`search/search_log.md`, and let this skill's human screening gates take over from that
-pool — this skill plans and writes the review; it does not re-run the retrieval.
+pool. Import the run with the bundled script — it copies the delivery into
+`search/exports/litsearch-<run_id>/` as a read-only export, appends one
+`search/search_log.csv` row whose `result_count` is PRISMA's total identified count, and
+refuses (nothing written) if that run was already imported or its PRISMA total is missing:
+
+    python3 <skill_dir>/scripts/import_litsearch.py --project-dir <project_dir> --run-dir <lit-search run dir> --searcher-id <named human>
+
+Then let this skill's human screening gates take over from that pool — this skill plans and
+writes the review; it does not re-run the retrieval.
 
 Read [references/REVIEW_TYPES.md](references/REVIEW_TYPES.md) before collecting literature or drafting. Use only narrative, method-survey, scoping, or systematic as route tokens; systematic always means qualitative synthesis in this skill. Before evidence collection begins, a corrected route may be recorded with an explicit decision note. After collection begins, the project route is immutable: freeze the old project and initialize a new project for a different route, carrying forward only logged, provenance-preserving artifacts.
 

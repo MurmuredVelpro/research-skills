@@ -84,6 +84,7 @@ Plan, conduct, and draft a medical imaging AI review whose every claim audits ba
 | `references/QUALITY_CHECKLIST.md` | Pre-submission quality checklist |
 | `scripts/init_review_project.py` | Project initializer (atomic, refuses existing targets) |
 | `scripts/audit_manuscript.py` | Executable manuscript audit (`scripts/mir_audit/` package) |
+| `scripts/import_litsearch.py` | Import a lit-search run as an immutable search export + one `search_log.csv` row (refuses re-import or a missing PRISMA total) |
 | `tests/` | Fixture test suite locking the audit and initializer contracts |
 
 ---
