@@ -265,3 +265,18 @@ class ValidateSearchLogBranches(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ForeignHeaderRefusedUpFront(unittest.TestCase):
+    """The audit would also reject a foreign header after writing; the import must refuse first."""
+
+    setUp = ImportLitsearchTest.setUp
+    tearDown = ImportLitsearchTest.tearDown
+    run_import = ImportLitsearchTest.run_import
+
+    def test_foreign_header_is_refused_by_the_precheck_not_by_rollback(self):
+        (self.project / "search/search_log.csv").write_text("database,date,hits\n", encoding="utf-8")
+        code, out = self.run_import()
+        self.assertEqual(code, 2, out)
+        self.assertIn("header is not the audit schema", out)
+        self.assertNotIn("audit rejects", out)

@@ -172,3 +172,15 @@ class TestScreenSampleJev:
         trial = json.loads((seeded_run.root / "screening_trial.json").read_text())
         assert trial["parameters"]["judge"] == "jev"
         assert trial["parameters"]["sample"] == {"method": "random", "size": 1, "seed": 1}
+
+
+def test_resume_with_random_is_refused_for_its_own_reason(
+    seeded_run, topic_path, runs_root  # noqa: F811
+):
+    # 没有上一轮时续跑本来也会以 2 退出；这里要看到的是 random 冲突本身被点名
+    extra = ("--limit", "1", "--sample", "random", "--resume")
+    args = TestScreenSampleCli._cmd(topic_path, runs_root, *extra)
+    result = runner.invoke(app, args)
+    assert result.exit_code == 2, result.output
+    assert "--resume 不能与 --sample random 同用" in result.output
+    assert "还没有筛选轮次" not in result.output
