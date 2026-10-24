@@ -5,7 +5,7 @@ description: Use when the user wants visually striking, shareable slide-deck IMA
 
 # Paper Slide Deck Generator
 
-Transform any content — an article, a topic, or a paper — into stylized, shareable slide images; for PDF papers, figures are detected and extracted from the source. Each slide is an AI-generated image, so every generated slide is proofread before it can be merged (Step 6.5).
+Transform any content — an article, a topic, or a paper — into stylized, shareable slide images; for PDF papers, figures are detected and extracted from the source. Generated slides are AI images that garble math and numbers, so every slide recorded as generated (`generated.json`, written by `generate-slides.py` or `proofread.ts --record`) must carry a proofread disposition before the merge scripts accept the deck (Step 6.5).
 
 ## Usage
 
@@ -242,6 +242,10 @@ no-key path from the Setup section (`--outline-only` + extraction + prompts hand
   (the merge scripts only accept png/jpg/jpeg)
 
 #### Option 2: Gemini Web Skill
+
+The Web path does not write `generated.json` itself — record each slide it produces with
+`proofread.ts --record <slide-deck-dir> <slide-file> --model gemini-web`, or the merge gate
+cannot tell those slides are AI-generated (it warns when `prompts/` exists without a ledger).
 
 Read [references/gemini-web.md](references/gemini-web.md) for the consent check,
 per-slide invocation, and proxy setup. It requires the `baoyu-danger-gemini-web`

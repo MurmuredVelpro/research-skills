@@ -46,6 +46,12 @@ npx -y bun ${GEMINI_WEB_SKILL_DIR}/scripts/main.ts \
 Where `GEMINI_WEB_SKILL_DIR` is the `baoyu-danger-gemini-web` skill directory. Keep one
 `sessionId` for the whole deck so slides stay stylistically consistent.
 
+After each slide, record it as AI-generated so the merge gate requires its proofread:
+
+```bash
+npx -y bun ${SKILL_DIR}/scripts/proofread.ts --record <slide-deck-dir> 01-slide-cover.png --model gemini-web
+```
+
 ## Proxy
 
 If the user is on a restricted network, prepend:

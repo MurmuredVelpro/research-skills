@@ -247,6 +247,25 @@ def find_slides_to_generate(prompt_files: list, output_dir: Path) -> list:
     return slides
 
 
+def unrecorded_existing(prompt_files: list, output_dir: Path) -> list:
+    """Existing slide images for these prompts that generated.json does not list.
+
+    They are skipped (idempotence) but not recorded: they may be extracted figures, or
+    AI images from an older run / the Gemini Web path. Only the agent knows which, so the
+    run names them instead of guessing.
+    """
+    ledger = output_dir / GENERATED_LEDGER
+    recorded = set()
+    if ledger.exists():
+        recorded = set(json.loads(ledger.read_text(encoding="utf-8")).get("slides", {}))
+    names = []
+    for prompt_file in prompt_files:
+        found = existing_output(output_dir / prompt_file.stem)
+        if found and found.name not in recorded:
+            names.append(found.name)
+    return names
+
+
 def list_existing_slides(output_dir: Path) -> list:
     """List already-generated slide images in the output directory."""
     return sorted(
@@ -293,6 +312,12 @@ def main():
 
     # Find slides to generate
     slides = find_slides_to_generate(prompt_files, output_dir)
+    unrecorded = unrecorded_existing(prompt_files, output_dir)
+    if unrecorded:
+        print(f"\nNote: {len(unrecorded)} existing slide(s) are skipped but not in {GENERATED_LEDGER}: "
+              + ", ".join(unrecorded))
+        print("If any of them is AI-generated (older run, Gemini Web), record it so the merge gate "
+              "requires a proofread:\n  bun scripts/proofread.ts --record <deck-dir> <slide-file>")
 
     if not slides:
         print("\nAll slides already generated. Nothing to do.")

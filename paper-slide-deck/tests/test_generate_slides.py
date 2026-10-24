@@ -130,3 +130,37 @@ def test_record_generated_keeps_other_slides_and_replaces_a_new_extension(gs, tm
     gs.record_generated(tmp_path, tmp_path / "02-slide-x.jpg", tmp_path / "p" / "02-slide-x.md", "m")
     slides = json.loads((tmp_path / "generated.json").read_text())["slides"]
     assert sorted(slides) == ["01-slide-cover.png", "02-slide-x.jpg"]
+
+
+def test_main_records_every_slide_it_generates(gs, tmp_path, monkeypatch):
+    """回归（对抗方 S5-1）：接线必须走 main()——只测 record_generated 时删掉调用也全绿。"""
+    import json
+    from types import SimpleNamespace
+
+    (tmp_path / "prompts").mkdir()
+    (tmp_path / "prompts" / "01-slide-cover.md").write_text("cover", encoding="utf-8")
+    png = b"\x89PNG\r\n\x1a\n" + b"0" * 64
+    part = SimpleNamespace(inline_data=SimpleNamespace(data=png, mime_type="image/png"))
+    response = SimpleNamespace(candidates=[SimpleNamespace(content=SimpleNamespace(parts=[part]))])
+    client = SimpleNamespace(models=SimpleNamespace(generate_content=lambda **_: response))
+    genai = SimpleNamespace(Client=lambda api_key: client)
+    types = SimpleNamespace(GenerateContentConfig=lambda **k: k, ImageConfig=lambda **k: k)
+    monkeypatch.setattr(gs, "check_dependencies", lambda: (genai, types))
+    monkeypatch.setenv("GOOGLE_API_KEY", "k-test")
+    monkeypatch.setattr(sys, "argv", ["generate-slides.py", str(tmp_path), "--model", "gemini-x"])
+
+    gs.main()
+
+    slides = json.loads((tmp_path / "generated.json").read_text())["slides"]
+    assert list(slides) == ["01-slide-cover.png"]
+    assert slides["01-slide-cover.png"]["model"] == "gemini-x"
+
+
+def test_unrecorded_existing_names_skipped_slides_missing_from_the_ledger(gs, tmp_path):
+    (tmp_path / "prompts").mkdir()
+    for stem in ("01-slide-a", "02-slide-b"):
+        (tmp_path / "prompts" / f"{stem}.md").write_text("p", encoding="utf-8")
+        (tmp_path / f"{stem}.png").write_bytes(b"x" * 20000)
+    gs.record_generated(tmp_path, tmp_path / "01-slide-a.png", tmp_path / "prompts" / "01-slide-a.md", "m")
+    prompts = gs.list_prompt_files(tmp_path / "prompts")
+    assert gs.unrecorded_existing(prompts, tmp_path) == ["02-slide-b.png"]

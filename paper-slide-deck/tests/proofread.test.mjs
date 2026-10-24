@@ -2,11 +2,11 @@
 // generated.json cannot be merged until proofread.json carries a disposition bound to its bytes.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const { proofreadGate, markProofread, sha256File } = await import("../scripts/proofread.ts");
+const { proofreadGate, markProofread, recordGenerated, sha256File } = await import("../scripts/proofread.ts");
 const pptx = await import("../scripts/merge-to-pptx.ts");
 const pdf = await import("../scripts/merge-to-pdf.ts");
 
@@ -20,9 +20,12 @@ const PNG2 = Buffer.from(
   "base64"
 );
 
+// An extracted figure has its own bytes (slides are identified by content hash).
+const FIGURE = Buffer.concat([PNG, Buffer.from("extracted-figure-trailer")]);
+
 function deck({ generated = ["02-slide-method.png"], proofread } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "psd-proof-"));
-  writeFileSync(join(dir, "01-slide-figure.png"), PNG); // extracted figure: never in generated.json
+  writeFileSync(join(dir, "01-slide-figure.png"), FIGURE); // extracted figure: never in generated.json
   writeFileSync(join(dir, "02-slide-method.png"), PNG);
   if (generated) {
     const slides = Object.fromEntries(generated.map((f) => [f, { sha256: sha256File(join(dir, f)) }]));
@@ -109,3 +112,80 @@ for (const [name, mod, ext] of [["merge-to-pptx", pptx, "pptx"], ["merge-to-pdf"
     assert.ok(existsSync(clean));
   });
 }
+
+// ---- regressions: stage-5 adversary findings ----
+
+async function captureStderr(fn) {
+  const original = console.error;
+  const lines = [];
+  console.error = (...args) => lines.push(args.join(" "));
+  try {
+    return { result: await fn(), stderr: lines.join("\n") };
+  } finally {
+    console.error = original;
+  }
+}
+
+function deckOfTwo() {
+  const dir = mkdtempSync(join(tmpdir(), "psd-proof2-"));
+  writeFileSync(join(dir, "01-slide-cover.png"), PNG);
+  writeFileSync(join(dir, "02-slide-method.png"), PNG2);
+  recordGenerated(dir, "01-slide-cover.png", "gemini-x");
+  recordGenerated(dir, "02-slide-method.png", "gemini-x");
+  return dir;
+}
+
+for (const [name, mod, ext] of [["merge-to-pptx", pptx, "pptx"], ["merge-to-pdf", pdf, "pdf"]]) {
+  test(`${name} names every unproofread slide on stderr`, async () => {
+    const dir = deckOfTwo();
+    const { result, stderr } = await captureStderr(() => mod.main([dir, "--output", join(dir, `o.${ext}`)]));
+    assert.equal(result, 1);
+    assert.match(stderr, /2 AI-generated slide\(s\) not proofread/);
+    assert.match(stderr, /01-slide-cover\.png/);
+    assert.match(stderr, /02-slide-method\.png/);
+  });
+
+  test(`${name} lists [CHECK] slides and the --allow-unproofread warning`, async () => {
+    const dir = deckOfTwo();
+    markProofread(dir, "01-slide-cover.png", "check", "garbled sigma");
+    const { result, stderr } = await captureStderr(() =>
+      mod.main([dir, "--output", join(dir, `o.${ext}`), "--allow-unproofread"]));
+    assert.equal(result, 0);
+    assert.match(stderr, /\[CHECK\] 01-slide-cover\.png — garbled sigma/);
+    assert.match(stderr, /Warning: 1 AI-generated slide\(s\) not proofread.*02-slide-method\.png.*--allow-unproofread/);
+  });
+}
+
+test("a renamed generated slide is still gated, and its disposition follows its bytes", () => {
+  const dir = deck();
+  renameSync(join(dir, "02-slide-method.png"), join(dir, "03-slide-method-v2.PNG"));
+  const renamed = [{ filename: "03-slide-method-v2.PNG", path: join(dir, "03-slide-method-v2.PNG") }];
+  assert.match(proofreadGate(dir, renamed).fatal[0], /03-slide-method-v2\.PNG \(no proofread disposition\)/);
+  markProofread(dir, "03-slide-method-v2.PNG", "ok");
+  assert.deepEqual(proofreadGate(dir, renamed).fatal, []);
+});
+
+test("a recorded slide missing from the deck is warned about", () => {
+  const dir = deck();
+  const { warnings } = proofreadGate(dir, [{ filename: "01-slide-figure.png", path: join(dir, "01-slide-figure.png") }]);
+  assert.match(warnings.join(" "), /not in the deck: 02-slide-method\.png/);
+});
+
+test("prompts without a generated.json ledger are warned about (Gemini Web path)", () => {
+  const dir = deck({ generated: null });
+  mkdirSync(join(dir, "prompts"));
+  const { fatal, warnings } = proofreadGate(dir, slidesOf(dir));
+  assert.deepEqual(fatal, []);
+  assert.match(warnings.join(" "), /cannot tell which slides are AI-generated/);
+});
+
+test("slides in the slides/ subdirectory can be recorded and marked", () => {
+  const dir = mkdtempSync(join(tmpdir(), "psd-sub-"));
+  mkdirSync(join(dir, "slides"));
+  writeFileSync(join(dir, "slides", "04-slide-x.png"), PNG);
+  recordGenerated(dir, "04-slide-x.png", "gemini-web");
+  const slides = [{ filename: "04-slide-x.png", path: join(dir, "slides", "04-slide-x.png") }];
+  assert.equal(proofreadGate(dir, slides).fatal.length, 1);
+  markProofread(dir, "04-slide-x.png", "ok");
+  assert.deepEqual(proofreadGate(dir, slides).fatal, []);
+});
