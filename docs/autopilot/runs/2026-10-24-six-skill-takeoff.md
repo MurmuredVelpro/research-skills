@@ -10,7 +10,7 @@
 - host: strict (bwrap usable; `host-doctor.sh` at 98b1ffe)
 - policy: docs/autopilot-policy.json at the pinned commit
 - helper pin: 3790b927c7b72d6896ca0ce3d0189e16b5efe750f13c858e2e2232badf1ad3c0
-- current: stage 2 review targets (head 540e4fd); stage 1 mutant wave next
+- current: stage 3 + stage 4 review targets (head HEAD_PLACEHOLDER); C1–C3 mutant wave
 
 ## Goal
 
@@ -92,8 +92,8 @@ Append only. The human rules on each at landing.
 
 1. [x] research-paper executable gate — owns C1 (8243c27, fixes f71400c)
 2. [x] research-proposal executable gate + shared core + 开题报告篇幅 — owns C2, C3 (540e4fd)
-3. [ ] lit-search seeded random calibration sample — owns C4
-4. [ ] scholar-slides deck-type audit — owns C5
+3. [x] lit-search seeded random calibration sample — owns C4 (b42d040)
+4. [x] scholar-slides deck-type audit — owns C5 (a138810)
 5. [ ] paper-slide-deck proofread gate — owns C6
 6. [ ] medical-imaging-review lit-search import + duplicated sentence — owns C7
 
@@ -117,6 +117,12 @@ Append only. The human rules on each at landing.
 | R4 | s1-targets | claude subagent | ledger `1,204` read as 1 and 204 → false number-not-in-ledger | minor-fixed | reproduced; f71400c NUMBER_RE, test `test_thousands_separator_matches_the_ledger` |
 | R5 | s1-targets | claude subagent | checklist row missing its disposition cell accepted; `- [ ]` and TBD branches untested | minor-fixed | reproduced (`| 3. Data sources |` → []); f71400c, test `test_checklist_unchecked_box_tbd_and_missing_cell_fail` |
 | R6 | s1-targets | claude subagent | references-section exclusion not exercised by any test | minor-fixed | f71400c, test `test_references_section_numbers_are_excluded` |
+| R7 | s2-targets | claude subagent | C2: auto mode fell back to APA when References were `1. …` / `\[1\]` / `［1］`, silently ignoring every numeric citation (exit 0 with orphans) | blocking-fixed | reproduced (exit 0 with orphan [5]); fixed 60ff5e9 (mixed/mismatch fail closed, numbered-list entries, bracket normalization); tests `test_numbered_list_references_are_reconciled_not_skipped`, `test_escaped_and_fullwidth_brackets_are_normalized`, `test_mixed_citation_styles_fail`, `test_explicit_style_mismatch_fails` |
+| R8 | s2-targets | claude subagent | C2: CJK `\w` boundary hid `根据Smith (2020)`; `张伟等, 2020` keyed as 张伟等 | minor-fixed | reproduced; 60ff5e9 ASCII lookbehind, lazy CJK; Chinese narrative author-year documented as unsupported (use GB/T); tests `test_latin_narrative_after_cjk_and_diacritic_surnames`, `test_chinese_et_al_is_keyed_by_the_surname` |
+| R9 | s2-targets | claude subagent | C2: Müller/Çelik, `(Smith et al. 2024)`, `(Smith, 2020, 2022)` not parsed | minor-fixed | 60ff5e9; test `test_no_comma_and_multi_year_apa_forms` + diacritic test |
+| R10 | s2-targets | claude subagent | C2: leftover instructions under References unchecked; `### 外文文献` sub-heading ended the references section early | minor-fixed | 60ff5e9 (heading-level aware split_body, REF_INSTRUCTION_RE); tests `test_references_subheadings_stay_in_the_references_section`, `test_leftover_instruction_in_references_fails_but_apa_descriptors_pass` |
+| R11 | s2-targets | claude subagent | targets marked expected survivors: full-width comma, disclosure guard, AI-tell body-only, figure-label anchor, non-UTF-8 → exit 2 | minor-fixed | 60ff5e9 tests `test_fullwidth_comma_in_numeric_citation`, `test_disclosure_flag_does_not_excuse_other_placeholders`, `test_ai_tell_inside_references_titles_is_not_body`, `test_figure_label_exemption_is_exact`, `test_non_utf8_file_is_usage_error` (+ research-paper `test_non_utf8_draft_is_usage_error`) |
+| R12 | s2-targets | claude subagent | C3: import test text-only; local redefinition would pass | minor-fixed | 60ff5e9 `test_each_gate_uses_its_own_copy_without_shadowing` (module identity) |
 
 ### Parked
 
