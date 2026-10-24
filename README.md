@@ -141,6 +141,7 @@ Generate high-quality academic research proposals — PhD applications, research
 
 - **Structured 5-phase workflow** with a **write-with-verify** content stage: Requirements → Literature (+verification gate) → Outline (approval red line) → Content (section-by-section) → Output
 - **Citation-integrity guardrails**: every reference verified to exist (DOI/PMID/arXiv or Zotero) with author and year matching the source — unverifiable entries are flagged, never fabricated
+- **Executable citation gate**: `scripts/check_proposal.py` reconciles in-text citations ↔ References both ways (APA author-year or GB/T 7714 `[N]`), fails on mixed styles instead of half-checking, and catches placeholders, AI tells and leftover scaffold instructions (shares its core, byte-identical, with research-paper)
 - **Multi-source literature integration**: WebSearch, Zotero MCP, arXiv, PubMed (with tool-portable fallbacks)
 - **Bilingual support**: English and Chinese (中文)
 - **Domain adaptation**: STEM (incl. computational / ML / AI-for-Science), Humanities, Social Sciences
@@ -193,6 +194,12 @@ already done. Two disciplines distinguish it from the proposal/review skills:
 Citation discipline is the repository's shared five-rule core in journal-style form
 ([docs/citation-integrity-core.md](./docs/citation-integrity-core.md)); the related-work
 corpus can be built by **lit-search** and consumed directly.
+
+The Phase 5 gates are executable: `scripts/check_paper.py paper_draft.md --ledger
+results_ledger.csv --bib references.bib` fails on any metric-like number (decimal, %, `n=`)
+the ledger does not cover — including in Chinese prose and bracketed CIs — on `[@citekey]` ↔
+`references.bib` orphans in either direction, on placeholder/AI-tell hits, and on reporting-
+checklist rows without a disposition. Exit 0 means no mechanical findings, not a correct paper.
 
 ---
 
