@@ -153,7 +153,7 @@ uv run lit proceedings <run> --topic ...   # 仅 MICCAI/LNCS 类主题；语料�
 
 # 2 筛选（三级放量，见下）
 uv run lit screen      <run> --topic ... --limit 4
-uv run lit screen      <run> --topic ... --limit 100
+uv run lit screen      <run> --topic ... --limit 100 --sample random --seed 1
 uv run lit screen      <run> --topic ...
 # 在 human_queue.csv 填 decision/reviewer/reason 后导回（可分批）
 uv run lit adjudicate  <run> --topic ... --kind screening --input human_queue.csv
@@ -223,14 +223,17 @@ uv run lit harvest --topic ... --into <run> --phase stage3 --sources cvf,openrev
 `jev_scores_trial.jsonl`），**不占正式轮次**——否则一次校准会盖掉全量结果。
 校准时打开的是这三个 `*_trial` 文件，不是 `human_queue.csv` / `jev_scores.jsonl`。
 
-> ⚠️ **`--limit N` 取的是语料前 N 条，不是随机抽样。** 前缀里几乎全是最先被采集、
+> ⚠️ **`--limit N` 默认（`--sample head`）取的是语料前 N 条，不是随机抽样。** 前缀里几乎全是最先被采集、
 > 也最典型的记录，而撑爆人工队列的永远是后面那些边缘记录。实测一次：前缀样本
 > 100/100 含锚点关键词、仅 12% 无摘要，报出队列率 9%；而全语料是 22.9% 和 75.7%，
 > 换同分布随机样本重测真实值 **18%**，超红线。
 >
 > 跑过 `lit proceedings` 或滚过雪球之后差距最大——那两步追加的记录全排在语料尾部。
-> **校准前先核样本构成**（关键词命中率、无摘要占比与全语料是否相当）；
-> 不相当就把 run 复制到临时目录、把 `corpus.jsonl` 换成随机 N 条再跑，别改原 run。
+> **校准（`--limit 100`）一律加 `--sample random --seed <S>`**：固定种子的无放回抽样，
+> 抽得到尾部，同一种子可复现；方法、种子与样本量写进 `screening_trial.json` 的
+> `parameters.sample`。冒烟（`--limit 4`）只验 API 契约，前缀即可。
+> 抽完仍要核样本构成（关键词命中率、无摘要占比与全语料是否相当）——100 条随机样本
+> 本身也有抽样误差，队列率贴近 15% 红线时换个种子再抽一次。
 
 ## 不能跳过的顺序
 

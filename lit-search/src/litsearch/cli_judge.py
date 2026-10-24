@@ -318,6 +318,7 @@ def run_jev_screening(
     concurrency: int,
     allow_regression: bool,
     api_key: str | None,
+    sampling: Mapping[str, object] | None = None,
 ) -> None:
     """用判定 API 跑一轮筛选。
 
@@ -410,6 +411,7 @@ def run_jev_screening(
                 "profile_sha256": profile.sha256(),
                 "profile": profile.model_dump(mode="json"),
                 **({"allow_regression": True} if allow_regression else {}),
+                **(sampling or {}),
             },
             prompt_sha256=digest,
         ),
