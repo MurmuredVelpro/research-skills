@@ -168,6 +168,13 @@ class CheckPaperTest(unittest.TestCase):
         code, out = self.run_gate()
         self.assertEqual(code, 0, out)
 
+    def test_section_after_references_at_the_same_level_is_checked(self):
+        # landing review：与 References 同级的 `## Appendix` 结束文献表，里面的数字照样对账
+        self.write(draft=CLEAN_DRAFT + "\n## Appendix\n\nExtra AUC 0.777.\n")
+        code, out = self.run_gate()
+        self.assertEqual(code, 1, out)
+        self.assertIn("'0.777'", out)
+
     def test_references_section_numbers_are_excluded(self):
         # 回归（对抗方 S1-6）：文献表里的 0.62 / 87.5% 不是本文结果；把它挪进正文就必须失败
         code, out = self.run_gate()

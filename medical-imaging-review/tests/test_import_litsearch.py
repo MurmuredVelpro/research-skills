@@ -11,6 +11,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 SCRIPTS = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
@@ -195,6 +196,21 @@ class ImportLitsearchTest(unittest.TestCase):
         self.assertEqual(code, 2, out)
         self.assertEqual(self.snapshot(), before)
         self.assertEqual(self.run_import()[0], 0)  # retry works: no half-finished import left behind
+
+    def test_audit_rejecting_the_new_row_rolls_back_after_an_earlier_valid_row(self):
+        self.assertEqual(self.run_import()[0], 0)  # row 2: a valid earlier import
+        (self.run / "manifest.json").write_text(json.dumps({"run_id": "second-run"}), encoding="utf-8")
+        before = self.snapshot()
+
+        def rejects_row_3(project_dir):
+            problems, valid, total, error = validate_search_log(project_dir)
+            return problems + ["search/search_log.csv row 3 is incomplete"], valid, total, error
+
+        with mock.patch.object(IMPORT, "validate_search_log", rejects_row_3):
+            code, out = self.run_import()
+        self.assertEqual(code, 2, out)
+        self.assertIn("row 3", out)
+        self.assertEqual(self.snapshot(), before)
 
     def test_empty_preexisting_export_dir_is_refused(self):
         (self.project / "search/exports" / f"litsearch-{RUN_ID}").mkdir(parents=True)
