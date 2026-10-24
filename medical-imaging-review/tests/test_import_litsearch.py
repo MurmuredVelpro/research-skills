@@ -196,9 +196,71 @@ class ImportLitsearchTest(unittest.TestCase):
         self.assertEqual(self.snapshot(), before)
         self.assertEqual(self.run_import()[0], 0)  # retry works: no half-finished import left behind
 
+    def test_empty_preexisting_export_dir_is_refused(self):
+        (self.project / "search/exports" / f"litsearch-{RUN_ID}").mkdir(parents=True)
+        before = self.snapshot()
+        code, out = self.run_import()
+        self.assertEqual(code, 2, out)
+        self.assertIn("already exists", out)
+        self.assertEqual(self.snapshot(), before)
+
     def test_not_a_review_project_is_refused(self):
         code, out = self.run_import("--project-dir", str(self.run))
         self.assertEqual(code, 2, out)
+
+
+class ValidateSearchLogBranches(unittest.TestCase):
+    """The refactor moved this rule out of the formal audit; every branch keeps its message."""
+
+    HEADER = ",".join(IMPORT.SEARCH_LOG_COLUMNS)
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.project = Path(self._tmp.name)
+        (self.project / "search/exports").mkdir(parents=True)
+        (self.project / "search/strategy.txt").write_text("q", encoding="utf-8")
+        (self.project / "search/exports/x.ris").write_text("r", encoding="utf-8")
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def problems(self, *rows: str) -> list[str]:
+        (self.project / "search/search_log.csv").write_text(
+            "\n".join((self.HEADER, *rows)) + "\n", encoding="utf-8")
+        return validate_search_log(self.project)[0]
+
+    def row(self, **change: str) -> str:
+        values = dict(source="PubMed", platform="NCBI", coverage="2020..2024", search_date="2024-01-01",
+                      strategy_file="search/strategy.txt", filters="none", result_count="10",
+                      export_file="search/exports/x.ris", searcher_id="r1", notes="")
+        values.update(change)
+        return ",".join(values[c] for c in IMPORT.SEARCH_LOG_COLUMNS)
+
+    def test_a_valid_row_has_no_problem(self):
+        self.assertEqual(self.problems(self.row()), [])
+
+    def test_each_branch_reports_its_problem(self):
+        cases = {
+            "is incomplete": self.row(platform=""),
+            "result_count is not an integer": self.row(result_count="ten"),
+            "has no preserved strategy file": self.row(strategy_file="search/missing.txt"),
+            "has no immutable source export": self.row(export_file="search/exports/missing.ris"),
+        }
+        for message, row in cases.items():
+            with self.subTest(message=message):
+                problems = self.problems(row)
+                self.assertTrue(any(message in p for p in problems), problems)
+                self.assertTrue(any("at least one reproducible" in p for p in problems), problems)
+
+    def test_negative_count_is_rejected(self):
+        problems = self.problems(self.row(result_count="-1"))
+        self.assertTrue(any("has no preserved strategy file" in p for p in problems), problems)
+
+    def test_header_error_is_returned_as_the_read_error(self):
+        (self.project / "search/search_log.csv").write_text("a,b\n1,2\n", encoding="utf-8")
+        problems, valid, total, error = validate_search_log(self.project)
+        self.assertIsNotNone(error)
+        self.assertEqual((problems, valid, total), ([error], 0, 0))
 
 
 if __name__ == "__main__":
