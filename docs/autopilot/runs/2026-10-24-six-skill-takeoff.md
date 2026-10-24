@@ -10,7 +10,7 @@
 - host: strict (bwrap usable; `host-doctor.sh` at 98b1ffe)
 - policy: docs/autopilot-policy.json at the pinned commit
 - helper pin: 3790b927c7b72d6896ca0ce3d0189e16b5efe750f13c858e2e2232badf1ad3c0
-- current: stage 5 + stage 6 review targets; then stage 3/4 findings recorded; full mutant wave after code freeze
+- current: full mutant wave C1–C7 at code freeze
 
 ## Goal
 
@@ -128,6 +128,14 @@ Append only. The human rules on each at landing.
 | R15 | s3-targets | claude subagent | C4: `--resume` with a random sample could mix two samples; `--seed` silently accepted with head | minor-fixed | 2f9d568 both refused with exit 2, test `test_seed_without_random_and_resume_with_random_are_refused` |
 | R16 | s4-targets | claude subagent | C5: qa_report wiring test only matched source text | minor-fixed | 6322428 spec-only findings split into `specFindings`; test `qa_report carries deck-type findings into the CKPT-3 report` |
 | R17 | s4-targets | claude subagent | C5: "Limitations of existing methods" satisfied the defense rule; a divider merely mentioning backup, or followed only by Q&A, counted as an appendix | minor-fixed | 6322428 PRIOR_WORK_RE, anchored BACKUP_RE, CLOSING_RE; five regression tests in deck_type.test.mjs |
+| R18 | s5-targets | claude subagent | C6: generate-slides.py main() wiring untested — removing the record_generated call disables the gate with all tests green | blocking-fixed | a4ffe68 test `test_main_records_every_slide_it_generates` drives main() with a stub client |
+| R19 | s5-targets | claude subagent | C6: merge-level output untested (naming each slide, [CHECK] listing, --allow-unproofread warning) | blocking-fixed | a4ffe68 tests `<merge> names every unproofread slide on stderr`, `<merge> lists [CHECK] slides and the --allow-unproofread warning` (two-slide fixture, stderr captured) |
+| R20 | s5-targets | claude subagent | C6: filename-keyed ledger — renumbered / re-slugged / case-renamed generated slides escape the gate | minor-fixed | a4ffe68 identity by sha256; test `a renamed generated slide is still gated, and its disposition follows its bytes`; recorded-but-missing slides warned |
+| R21 | s5-targets | claude subagent | C6: fail-open paths — Gemini Web never writes generated.json; skipped existing slides unrecorded; deleted ledger silent | minor-fixed | a4ffe68 `proofread.ts --record` + SKILL/gemini-web docs; prompts-without-ledger warning; generate-slides names unrecorded skipped slides (`test_unrecorded_existing_...`). The gate still cannot prove a slide is AI-generated when nobody records it — disclosed in SKILL.md wording |
+| R22 | s5-targets | claude subagent | C6: slides/ subdirectory slides gated but not markable | minor-fixed | a4ffe68 locateSlide; test `slides in the slides/ subdirectory can be recorded and marked` |
+| R23 | s6-targets | claude subagent | C7: failure after rename (window read, log append) leaves an un-retryable half import | minor-fixed | a1d2f2d all refusals before writes, rollback on append failure/audit rejection; test `test_failed_log_append_rolls_back_the_export` |
+| R24 | s6-targets | claude subagent | C7: untested guards — unparseable total, optional files, unsafe run id (`$` vs fullmatch), empty leftover dirs, empty pre-existing export, validate_search_log branches | minor-fixed | a1d2f2d + test commit eced80c; tests `test_unparseable_prisma_total_is_refused`, `test_optional_delivery_files_are_copied`, `test_unsafe_run_id_is_refused`, snapshot includes dirs, `test_empty_preexisting_export_dir_is_refused`, `ValidateSearchLogBranches` |
+| R25 | s6-targets | claude subagent | C7: post-import check only warned; foreign search_log header accepted | minor-fixed | a1d2f2d audit rejection of the new row rolls back (exit 2); foreign header refused before writing (`test_foreign_search_log_header_is_refused_before_writing`) |
 
 ### Parked
 
