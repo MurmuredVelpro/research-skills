@@ -220,6 +220,16 @@ class ImportLitsearchTest(unittest.TestCase):
         self.assertIn("already exists", out)
         self.assertEqual(self.snapshot(), before)
 
+    def test_dangling_symlink_at_the_export_path_is_refused(self):
+        exports = self.project / "search/exports"
+        exports.mkdir(parents=True, exist_ok=True)
+        (exports / f"litsearch-{RUN_ID}").symlink_to(self.project / "nowhere")
+        before = self.snapshot()
+        code, out = self.run_import()
+        self.assertEqual(code, 2, out)
+        self.assertIn("already exists", out)
+        self.assertEqual(self.snapshot(), before)
+
     def test_not_a_review_project_is_refused(self):
         code, out = self.run_import("--project-dir", str(self.run))
         self.assertEqual(code, 2, out)
