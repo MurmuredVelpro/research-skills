@@ -140,3 +140,8 @@ test("defense: 'Backup slides' and 'Appendix: proofs' dividers count", () => {
     assert.deepEqual(deckTypeAudit({ ...DEFENSE, slides }), [], title);
   }
 });
+
+test("defense: a Backup divider followed only by another divider is a P2", () => {
+  const slides = [...DEFENSE.slides.slice(0, -1), s("section", undefined, { title: "Extra" })];
+  assert.deepEqual(checks(deckTypeAudit({ ...DEFENSE, slides })), ["P2:missing-backup"]);
+});
