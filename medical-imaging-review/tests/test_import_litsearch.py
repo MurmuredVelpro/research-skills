@@ -84,9 +84,10 @@ class ImportLitsearchTest(unittest.TestCase):
         with (self.project / "search/search_log.csv").open(encoding="utf-8", newline="") as handle:
             return [row for row in csv.DictReader(handle) if any(row.values())]
 
-    def snapshot(self) -> dict[str, bytes]:
-        return {p.relative_to(self.project).as_posix(): p.read_bytes()
-                for p in self.project.rglob("*") if p.is_file()}
+    def snapshot(self) -> dict[str, bytes | None]:
+        """Every file's bytes and every directory (None) — an empty leftover folder counts."""
+        return {p.relative_to(self.project).as_posix(): (p.read_bytes() if p.is_file() else None)
+                for p in self.project.rglob("*")}
 
     def test_import_copies_files_and_appends_one_matching_row(self):
         before = len(self.rows())
@@ -144,6 +145,56 @@ class ImportLitsearchTest(unittest.TestCase):
         self.assertEqual(code, 2, out)
         self.assertIn("topic.yaml", out)
         self.assertEqual(self.snapshot(), before)
+
+    # --- regressions: stage-6 adversary findings ---------------------------------------------
+
+    def test_unparseable_prisma_total_is_refused(self):
+        for bad in ("合计识别：**N/A** 条", "合计识别：**,** 条"):
+            with self.subTest(bad=bad):
+                (self.run / "PRISMA.md").write_text(PRISMA.replace("合计识别：**1,234** 条", bad), encoding="utf-8")
+                before = self.snapshot()
+                code, out = self.run_import()
+                self.assertEqual(code, 2, out)
+                self.assertEqual(self.snapshot(), before)
+
+    def test_optional_delivery_files_are_copied(self):
+        (self.run / "coverage_report.md").write_text("# coverage\n", encoding="utf-8")
+        (self.run / "references.bib").write_text("@article{a,}\n", encoding="utf-8")
+        self.assertEqual(self.run_import()[0], 0)
+        target = self.project / "search/exports" / f"litsearch-{RUN_ID}"
+        self.assertTrue((target / "coverage_report.md").is_file())
+        self.assertTrue((target / "references.bib").is_file())
+
+    def test_unsafe_run_id_is_refused(self):
+        for run_id in ("../escape", "20261020\n", ".hidden"):
+            with self.subTest(run_id=run_id):
+                (self.run / "manifest.json").write_text(json.dumps({"run_id": run_id}), encoding="utf-8")
+                before = self.snapshot()
+                code, out = self.run_import()
+                self.assertEqual(code, 2, out)
+                self.assertIn("safe directory name", out)
+                self.assertEqual(self.snapshot(), before)
+
+    def test_foreign_search_log_header_is_refused_before_writing(self):
+        log = self.project / "search/search_log.csv"
+        log.write_text("database,date,hits\n", encoding="utf-8")
+        before = self.snapshot()
+        code, out = self.run_import()
+        self.assertEqual(code, 2, out)
+        self.assertIn("header", out)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_failed_log_append_rolls_back_the_export(self):
+        log = self.project / "search/search_log.csv"
+        log.chmod(0o444)
+        before = self.snapshot()
+        try:
+            code, out = self.run_import()
+        finally:
+            log.chmod(0o644)
+        self.assertEqual(code, 2, out)
+        self.assertEqual(self.snapshot(), before)
+        self.assertEqual(self.run_import()[0], 0)  # retry works: no half-finished import left behind
 
     def test_not_a_review_project_is_refused(self):
         code, out = self.run_import("--project-dir", str(self.run))

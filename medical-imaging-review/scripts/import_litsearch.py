@@ -13,11 +13,13 @@ import:
    ``search/exports/litsearch-<run_id>/`` (staged, then renamed; files made read-only);
 2. appends exactly one ``search/search_log.csv`` row whose ``result_count`` is PRISMA's total
    identified count and whose strategy/export paths point at the copied files;
-3. re-checks the project's search log with the audit's own rule.
+3. re-checks that row with the audit's own rule (``validate_search_log``).
 
 It refuses — exit 2, nothing written — when the export directory already exists (an import is
-never redone in place: a new lit-search run gets its own run id) or when the PRISMA total cannot
-be read. It uses only the Python standard library.
+never redone in place: a new lit-search run gets its own run id), when the PRISMA total cannot
+be read, or when an existing search_log.csv does not carry the audit's header. If appending the
+row fails or the audit rejects it, the copied export is removed again, so a retry is possible.
+It uses only the Python standard library.
 """
 
 from __future__ import annotations
@@ -42,9 +44,9 @@ from mir_audit.constants import SEARCH_LOG_COLUMNS  # noqa: E402
 REQUIRED = ("dois.md", "PRISMA.md", "topic.yaml")
 OPTIONAL = ("references.md", "coverage_report.md", "references.bib")
 #: lit-search 的 PRISMA.md 渲染行：「合计识别：**1,234** 条」（report.py prisma_markdown）
-IDENTIFIED_RE = re.compile(r"合计识别：\*\*([\d,]+)\*\*")
-CANONICAL_RE = re.compile(r"去重后规范记录：\*\*([\d,]+)\*\*")
-SAFE_RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+IDENTIFIED_RE = re.compile(r"合计识别：\*\*(\d[\d,]*)\*\*")
+CANONICAL_RE = re.compile(r"去重后规范记录：\*\*(\d[\d,]*)\*\*")
+SAFE_RUN_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
 class ImportRefused(Exception):
@@ -69,7 +71,7 @@ def read_run_id(run_dir: Path) -> str:
     run_id = run_dir.name
     if manifest.is_file():
         run_id = str(json.loads(manifest.read_text(encoding="utf-8")).get("run_id") or run_id)
-    if not SAFE_RUN_ID.match(run_id):
+    if not SAFE_RUN_ID.fullmatch(run_id):
         raise ImportRefused(f"run id {run_id!r} is not a safe directory name")
     return run_id
 
@@ -91,18 +93,31 @@ def make_read_only(directory: Path) -> None:
         path.chmod(path.stat().st_mode & ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH))
 
 
-def append_row(log: Path, row: dict[str, str]) -> None:
+def remove_export(target: Path) -> None:
+    for path in target.iterdir():
+        path.chmod(path.stat().st_mode | stat.S_IWUSR)
+    shutil.rmtree(target)
+
+
+def read_log(log: Path) -> str:
+    """Current search_log.csv text ('' if absent); refuses a header that is not the audit's."""
     if not log.exists():
-        log.write_text(",".join(SEARCH_LOG_COLUMNS) + "\n", encoding="utf-8")
-    existing = log.read_text(encoding="utf-8")
+        return ""
+    text = log.read_text(encoding="utf-8")
+    header = next(csv.reader(StringIO(text)), [])
+    if tuple(header) != SEARCH_LOG_COLUMNS:
+        raise ImportRefused(f"{log.name} header is not the audit schema ({', '.join(SEARCH_LOG_COLUMNS)})")
+    return text
+
+
+def render_row(row: dict[str, str]) -> str:
     buffer = StringIO()
     csv.DictWriter(buffer, fieldnames=SEARCH_LOG_COLUMNS, lineterminator="\n").writerow(row)
-    separator = "" if existing.endswith("\n") or not existing else "\n"
-    with log.open("a", encoding="utf-8", newline="") as handle:
-        handle.write(separator + buffer.getvalue())
+    return buffer.getvalue()
 
 
 def import_run(project_dir: Path, run_dir: Path, searcher_id: str, search_date: str | None) -> Path:
+    # 1. Everything that can refuse runs before anything is written.
     if not (project_dir / "review_config.yaml").is_file():
         raise ImportRefused(f"{project_dir} is not a review project (no review_config.yaml)")
     missing = [name for name in REQUIRED if not (run_dir / name).is_file()]
@@ -110,29 +125,19 @@ def import_run(project_dir: Path, run_dir: Path, searcher_id: str, search_date: 
         raise ImportRefused(f"{run_dir} lacks {', '.join(missing)} — run `lit report` / `lit deliver` first")
     identified, canonical = read_identified(run_dir / "PRISMA.md")
     run_id = read_run_id(run_dir)
+    coverage = read_window(run_dir / "topic.yaml")
+    log = project_dir / "search" / "search_log.csv"
+    log_before = read_log(log)
 
     exports = project_dir / "search" / "exports"
     target = exports / f"litsearch-{run_id}"
     if target.exists() or target.is_symlink():
         raise ImportRefused(f"{target.relative_to(project_dir)} already exists — an import is never redone in place")
-    exports.mkdir(parents=True, exist_ok=True)
-    staging = exports / f".litsearch-{run_id}.staging-{os.getpid()}"
-    staging.mkdir()
-    try:
-        for name in REQUIRED + OPTIONAL:
-            if (run_dir / name).is_file():
-                shutil.copy2(run_dir / name, staging / name)
-        make_read_only(staging)
-        staging.rename(target)
-    except BaseException:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
-
     relative = target.relative_to(project_dir).as_posix()
-    append_row(project_dir / "search" / "search_log.csv", {
+    row = render_row({
         "source": "lit-search",
         "platform": f"lit-search run {run_id} (sources and per-source counts: {relative}/PRISMA.md)",
-        "coverage": read_window(run_dir / "topic.yaml"),
+        "coverage": coverage,
         "search_date": search_date or date.today().isoformat(),
         "strategy_file": f"{relative}/topic.yaml",
         "filters": "frozen lit-search protocol (concept blocks, window, languages) in topic.yaml",
@@ -143,6 +148,50 @@ def import_run(project_dir: Path, run_dir: Path, searcher_id: str, search_date: 
                   + (f", after deduplication {canonical:,}" if canonical is not None else "")
                   + "; screening continues under this project's human gates"),
     })
+
+    # 2. Copy into a staging directory, then rename into place.
+    created_exports = not exports.exists()
+    exports.mkdir(parents=True, exist_ok=True)
+    staging = exports / f".litsearch-{run_id}.staging-{os.getpid()}"
+    try:
+        staging.mkdir()
+        for name in REQUIRED + OPTIONAL:
+            if (run_dir / name).is_file():
+                shutil.copy2(run_dir / name, staging / name)
+        make_read_only(staging)
+        staging.rename(target)
+    except BaseException:
+        if staging.exists():
+            remove_export(staging)
+        if created_exports:
+            shutil.rmtree(exports, ignore_errors=True)
+        raise
+
+    # 3. Append the row; if that fails or the audit rejects it, undo the whole import.
+    try:
+        prefix = log_before or ",".join(SEARCH_LOG_COLUMNS) + "\n"
+        if not prefix.endswith("\n"):
+            prefix += "\n"
+        log.write_text(prefix + row, encoding="utf-8")
+        new_index = sum(1 for _ in csv.DictReader(StringIO(prefix + row))) + 1
+        problems, _valid, _total, error = validate_search_log(project_dir)
+        rejected = [p for p in problems if f"row {new_index} " in p] + ([error] if error else [])
+        if rejected:
+            raise ImportRefused("the audit rejects the imported search_log row: " + "; ".join(rejected))
+    except BaseException:
+        # Export first: restoring the log can fail for the same reason the append did.
+        remove_export(target)
+        if created_exports:
+            shutil.rmtree(exports, ignore_errors=True)
+        try:
+            if log.exists() and log.read_text(encoding="utf-8") != log_before:
+                if log_before:
+                    log.write_text(log_before, encoding="utf-8")
+                else:
+                    log.unlink()
+        except OSError:
+            pass  # the original error below says why the log could not be written
+        raise
     return target
 
 
