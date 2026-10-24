@@ -10,7 +10,7 @@
 - host: strict (bwrap usable; `host-doctor.sh` at 98b1ffe)
 - policy: docs/autopilot-policy.json at the pinned commit
 - helper pin: 3790b927c7b72d6896ca0ce3d0189e16b5efe750f13c858e2e2232badf1ad3c0
-- current: stage 1 build
+- current: stage 1 review targets (head 8243c27)
 
 ## Goal
 
