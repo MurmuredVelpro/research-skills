@@ -96,6 +96,71 @@ def bib_keys(text: str) -> list[str]:
     return BIB_ENTRY_RE.findall(text)
 
 
+#: 顺序编码制（GB/T 7714 / IEEE）行内引用：[1]、[2-4]、[1, 3–5]、[1，3]
+NUMERIC_CITE_RE = re.compile(r"\[(\d+(?:\s*[-–—,，]\s*\d+)*)\](?!\()")
+NUMERIC_ENTRY_RE = re.compile(r"^\s*(?:[-*]\s*)?\[(\d+)\]")
+#: 作者-年份制的姓氏（拉丁或中文）与年份（可带 a/b 消歧后缀）
+_SURNAME = r"[A-Z][A-Za-z'’\-]+|[一-鿿]{1,4}"
+_YEAR = r"\d{4}[a-z]?"
+APA_PART_RE = re.compile(
+    rf"^(?:(?:e\.g\.|see|cf\.|i\.e\.)[,\s]+)?(?:(?:van|von|de|der|den|la|le)\s+)*({_SURNAME})"
+    rf"(?:\s+et al\.?|\s+(?:and|&)\s+(?:{_SURNAME})|\s*(?:、|和|等)\s*(?:{_SURNAME})?)?\s*[,，]\s*({_YEAR})"
+    rf"(?:\s*[,，]\s*(?:p|pp)\.\s*[\d\-–]+)?$"
+)
+APA_NARRATIVE_RE = re.compile(
+    rf"(?<![\w(])({_SURNAME})(?:\s+et al\.?|\s+(?:and|&)\s+(?:{_SURNAME}))?\s*[(（]({_YEAR})[)）]"
+)
+APA_ENTRY_RE = re.compile(
+    rf"^\s*(?:[-*]\s*|\d+[.)]\s*)?(?:(?:van|von|de|der|den|la|le)\s+)*({_SURNAME})\s*[,，.].*?[(（]({_YEAR})[^)）]*[)）]"
+)
+
+
+def expand_numeric(group: str) -> list[int]:
+    """'1, 3-5' → [1, 3, 4, 5]。倒序区间（5-3）原样当作两个端点，不静默吞掉。"""
+    numbers: list[int] = []
+    for piece in re.split(r"\s*[,，]\s*", group):
+        bounds = [int(x) for x in re.split(r"\s*[-–—]\s*", piece) if x]
+        if len(bounds) == 2 and bounds[0] <= bounds[1]:
+            numbers.extend(range(bounds[0], bounds[1] + 1))
+        else:
+            numbers.extend(bounds)
+    return numbers
+
+
+def numeric_citations(lines: list[tuple[int, str]]) -> dict[str, int]:
+    found: dict[str, int] = {}
+    for number, line in lines:
+        for match in NUMERIC_CITE_RE.finditer(line):
+            for value in expand_numeric(match.group(1)):
+                found.setdefault(str(value), number)
+    return found
+
+
+def numeric_entries(lines: list[tuple[int, str]]) -> dict[str, str]:
+    return {m.group(1): f"line {n}" for n, line in lines if (m := NUMERIC_ENTRY_RE.match(line))}
+
+
+def apa_key(surname: str, year: str) -> str:
+    return f"{surname.lower()}, {year}"
+
+
+def apa_citations(lines: list[tuple[int, str]]) -> dict[str, int]:
+    """(Smith, 2024)、(Smith & Lee, 2024; Wang et al., 2023a)、Smith et al. (2024) → 'smith, 2024'。"""
+    found: dict[str, int] = {}
+    for number, line in lines:
+        for group in re.findall(r"[(（]([^()（）]*\d{4}[a-z]?[^()（）]*)[)）]", line):
+            for part in re.split(r"\s*[;；]\s*", group.strip()):
+                if match := APA_PART_RE.match(part.strip()):
+                    found.setdefault(apa_key(*match.groups()), number)
+        for match in APA_NARRATIVE_RE.finditer(line):
+            found.setdefault(apa_key(*match.groups()), number)
+    return found
+
+
+def apa_entries(lines: list[tuple[int, str]]) -> dict[str, str]:
+    return {apa_key(*m.groups()): f"line {n}" for n, line in lines if (m := APA_ENTRY_RE.match(line))}
+
+
 def reconcile(cited: dict[str, int], listed: dict[str, str], where: str, listing: str) -> list[Finding]:
     """引用 ↔ 文献表双向对账。cited: key→行号；listed: key→位置描述。"""
     findings = [
@@ -114,17 +179,23 @@ def reconcile(cited: dict[str, int], listed: dict[str, str], where: str, listing
 # --- 数字对账 -------------------------------------------------------------------------------
 
 #: 结果型数字：小数、百分数、样本量 n=/N=。整数年份、章节号、Table 1 不在此列。
+#: 边界只认 ASCII——Python 的 \w 包含汉字，`AUC为0.912` 用 \w 作边界会整句漏检。
 METRIC_RE = re.compile(
-    r"(?<![\w.])(?:[nN]\s*=\s*(\d[\d,]*)|(\d+(?:\.\d+)?)\s*%|(\d+\.\d+))(?![\w])"
+    r"(?<![A-Za-z0-9_.])(?:[nN]\s*=\s*(\d[\d,]*)|(\d+(?:\.\d+)?)\s*%|(\d+\.\d+))(?![A-Za-z0-9_])"
 )
+#: 只剥离「不是结果数字」的东西：旗标、引文、URL/DOI、行内代码。方括号里的置信区间
+#: `[95% CI 0.71, 0.80]` 与链接文字 `[AUC 0.93](fig.png)` 仍要对账。
 _STRIP_INLINE = (
-    re.compile(r"\[[^\]]*\]"),  # 引文 / 旗标 / 链接文字——[PENDING: 0.91] 里的数字不算
-    re.compile(r"\]\([^)]*\)"),
+    re.compile(r"\[(?:PENDING|UNVERIFIED)[^\]]*\]"),  # [PENDING: 0.91] 是已披露的待补数字
+    re.compile(r"\[[^\]]*@[^\]]*\]"),  # [@smith2024; @lee2023, p. 4]
+    re.compile(r"\[\d+(?:\s*[-–—,，]\s*\d+)*\]"),  # [1]、[2-4]
+    re.compile(r"\]\([^)]*\)"),  # 链接目标，保留链接文字
     re.compile(r"https?://\S+"),
     re.compile(r"\b(?:doi:\s*)?10\.\d{4,9}/\S+", re.I),
     re.compile(r"`[^`]*`"),
 )
-NUMBER_RE = re.compile(r"\d+(?:\.\d+)?")
+#: 文献表/账本里的数字：千分位 1,204 是一个数，不是 1 和 204
+NUMBER_RE = re.compile(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?")
 
 
 def normalize_number(raw: str) -> str:

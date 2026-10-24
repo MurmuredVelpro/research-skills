@@ -34,7 +34,7 @@ Sensitivity was 91.5% on the internal set.
 
 ## References
 
-Smith J. Model. Radiology. 2024;310(2):1-12. doi:10.1148/radiol.2024.0001
+Smith J. Model. Radiology. 2024;310(2):1-12. Reported kappa 0.62 and 87.5% agreement. doi:10.1148/radiol.2024.0001
 """
 
 LEDGER = """claim_id,section,claim_text,value,unit,dispersion,source_artifact,source_locator,status
@@ -128,6 +128,37 @@ class CheckPaperTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertNotIn("number-not-in-ledger", out)
 
+    def test_numbers_in_chinese_prose_are_checked(self):
+        # 回归（对抗方 S1-1）：\w 含汉字，旧边界让紧贴汉字的数字整句漏检
+        draft = CLEAN_DRAFT.replace("## References", "外部验证AUC为0.912。\n\n## References")
+        self.write(draft=draft)
+        code, out = self.run_gate()
+        self.assertEqual(code, 1, out)
+        self.assertIn("'0.912'", out)
+
+    def test_bracketed_confidence_interval_is_checked(self):
+        # 回归（对抗方 S1-2）：只有 [PENDING…] 与引文可豁免，方括号里的置信区间要对账
+        self.write(draft=CLEAN_DRAFT.replace("(95% CI 0.82-0.87)", "[95% CI 0.71, 0.80]"))
+        code, out = self.run_gate()
+        self.assertEqual(code, 1, out)
+        self.assertIn("'0.71'", out)
+
+    def test_thousands_separator_matches_the_ledger(self):
+        # 回归（对抗方 S1-4）：账本里的 1,204 是一个数
+        self.write(draft=CLEAN_DRAFT.replace("(n=412)", "(n=1,204)"),
+                   ledger=LEDGER.replace("external test n,412", 'external test n,"1,204"'))
+        code, out = self.run_gate()
+        self.assertEqual(code, 0, out)
+
+    def test_references_section_numbers_are_excluded(self):
+        # 回归（对抗方 S1-6）：文献表里的 0.62 / 87.5% 不是本文结果；把它挪进正文就必须失败
+        code, out = self.run_gate()
+        self.assertEqual(code, 0, out)
+        self.write(draft=CLEAN_DRAFT.replace("## References\n", "Reported kappa 0.62.\n\n## References\n"))
+        code, out = self.run_gate()
+        self.assertEqual(code, 1, out)
+        self.assertIn("'0.62'", out)
+
     # --- (b) citekeys ↔ bib ------------------------------------------------------------------
 
     def test_citekey_without_bib_entry_fails(self):
@@ -170,6 +201,13 @@ class CheckPaperTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn("WARN [placeholder]", out)
 
+    def test_disclosure_flag_does_not_excuse_other_placeholders(self):
+        # 回归（对抗方 S1-3）：--allow-disclosed-flags 只降级 [PENDING…]/[UNVERIFIED…]
+        self.write(draft=CLEAN_DRAFT.replace("doi:10.1148/radiol.2024.0001", "doi:10.xxxx/abc"))
+        code, out = self.run_gate("--allow-disclosed-flags")
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL [placeholder]", out)
+
     def test_ai_tell_fails(self):
         self.write(draft=CLEAN_DRAFT.replace("## 2. Methods", "In recent years, X grew.\n\n## 2. Methods"))
         code, out = self.run_gate()
@@ -183,6 +221,17 @@ class CheckPaperTest(unittest.TestCase):
         code, out = self.run_gate()
         self.assertEqual(code, 1, out)
         self.assertRegex(out, r"FAIL \[checklist-undisposed\] checklist_claim\.md:\d+: .*3\. Data sources")
+
+    def test_checklist_unchecked_box_tbd_and_missing_cell_fail(self):
+        # 回归（对抗方 S1-5）
+        for row, label in (("- [ ] 4. Reference standard", "unchecked box"),
+                           ("| 5. Split unit | TBD |", "5. Split unit"),
+                           ("| 6. External test |", "6. External test")):
+            with self.subTest(row=row):
+                self.write(checklist=CHECKLIST + row + "\n")
+                code, out = self.run_gate()
+                self.assertEqual(code, 1, out)
+                self.assertRegex(out, r"FAIL \[checklist-undisposed\] .*" + re.escape(label))
 
     def test_missing_checklist_fails_unless_skipped(self):
         (self.dir / "checklist_claim.md").unlink()

@@ -96,7 +96,8 @@ def check_checklists(paths: list[Path]) -> list[Finding]:
             if not row.startswith("|") or set(row) <= {"|", "-", ":", " "}:
                 continue
             cells = [cell.strip() for cell in row.strip("|").split("|")]
-            if len(cells) >= 2 and cells[0] and cells[1] in UNDISPOSED:
+            # 缺第二列（`| 3. Data sources |`）与空第二列同样是未处置
+            if cells[0] and (len(cells) < 2 or cells[1] in UNDISPOSED):
                 findings.append(Finding("checklist-undisposed", f"{path.name}:{number}",
                                         f"no location or disposition for: {cells[0][:60]}"))
     return findings
