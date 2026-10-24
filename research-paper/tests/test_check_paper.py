@@ -112,6 +112,24 @@ class CheckPaperTest(unittest.TestCase):
         self.assertEqual(code, 1, out)
         self.assertIn("'93.0%'", out)
 
+    def test_unit_glued_and_leading_dot_numbers_are_checked(self):
+        # landing review: `12.5ms`、`r = .85`、`95%CI` 曾整段漏检
+        for text, shown in (("latency 12.5ms", "12.5"), ("a 2.5x speedup", "2.5"),
+                            ("3.5mm slices", "3.5"), ("r = .85", ".85"), ("p < .001", ".001"),
+                            ("coverage 97%CI", "97%")):
+            with self.subTest(text=text):
+                self.write(draft=CLEAN_DRAFT.replace("## References", f"Also {text}.\n\n## References"))
+                code, out = self.run_gate()
+                self.assertEqual(code, 1, out)
+                self.assertIn(f"'{shown}'", out)
+
+    def test_leading_dot_matches_the_ledger_and_versions_are_not_numbers(self):
+        ledger = LEDGER.rstrip("\n") + "\nC9,results,corr,0.85,,,a.csv,row 9,verified\n"
+        draft = CLEAN_DRAFT.replace("## References", "Agreement r = .85 with tool 2.0.1.\n\n## References")
+        self.write(draft=draft, ledger=ledger)
+        code, out = self.run_gate()
+        self.assertEqual(code, 0, out)
+
     def test_untraced_sample_size_fails(self):
         self.write(draft=CLEAN_DRAFT.replace("(n=412)", "(n=1,204)"))
         code, out = self.run_gate()
