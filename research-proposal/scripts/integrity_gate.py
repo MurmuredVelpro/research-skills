@@ -38,8 +38,21 @@ class Finding:
         return f"{level} [{self.kind}] {self.location}: {self.detail}"
 
 
+class InputError(ValueError):
+    """输入文件读不了——门禁没能运行（退出码 2），不能当作「有发现」，更不能当作「通过」。"""
+
+
 def read_text(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
+    try:
+        return path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as error:
+        raise InputError(f"{path.name} is not UTF-8 (convert it first, e.g. iconv -f GBK -t UTF-8)") from error
+    except OSError as error:
+        raise InputError(f"cannot read {path}: {error.strerror}") from error
+
+
+def heading_level(line: str) -> int:
+    return len(line) - len(line.lstrip("#"))
 
 
 def split_body(text: str) -> tuple[list[tuple[int, str]], list[tuple[int, str]]]:
@@ -47,7 +60,7 @@ def split_body(text: str) -> tuple[list[tuple[int, str]], list[tuple[int, str]]]
     body: list[tuple[int, str]] = []
     refs: list[tuple[int, str]] = []
     in_fence = False
-    in_refs = False
+    refs_level = 0  # 参考文献标题的级别；0 = 不在参考文献节
     for number, line in enumerate(text.splitlines(), start=1):
         if FENCE_RE.match(line):
             in_fence = not in_fence
@@ -55,12 +68,12 @@ def split_body(text: str) -> tuple[list[tuple[int, str]], list[tuple[int, str]]]
         if in_fence:
             continue
         if REFERENCES_HEADING_RE.match(line.strip()):
-            in_refs = True
+            refs_level = heading_level(line)
             continue
-        if in_refs and HEADING_RE.match(line) and not REFERENCES_HEADING_RE.match(line.strip()):
-            # 参考文献节之后的附录等仍属正文
-            in_refs = False
-        (refs if in_refs else body).append((number, line))
+        if refs_level and HEADING_RE.match(line) and heading_level(line) <= refs_level:
+            # 「### 外文文献」这类子标题仍属参考文献节；同级或更高级的标题（附录等）才回到正文
+            refs_level = 0
+        (refs if refs_level else body).append((number, line))
     return body, refs
 
 
@@ -98,21 +111,34 @@ def bib_keys(text: str) -> list[str]:
 
 #: 顺序编码制（GB/T 7714 / IEEE）行内引用：[1]、[2-4]、[1, 3–5]、[1，3]
 NUMERIC_CITE_RE = re.compile(r"\[(\d+(?:\s*[-–—,，]\s*\d+)*)\](?!\()")
-NUMERIC_ENTRY_RE = re.compile(r"^\s*(?:[-*]\s*)?\[(\d+)\]")
-#: 作者-年份制的姓氏（拉丁或中文）与年份（可带 a/b 消歧后缀）
-_SURNAME = r"[A-Z][A-Za-z'’\-]+|[一-鿿]{1,4}"
+#: 文献表条目：`[1] …`，或 Markdown 有序列表 `1. …` / `1) …`
+NUMERIC_ENTRY_RE = re.compile(r"^\s*(?:[-*]\s*)?(?:\[(\d+)\]|(\d+)[.)、]\s)")
+#: 全角方括号与 Markdown 转义方括号在比对前统一成 ASCII
+_BRACKETS = str.maketrans({"［": "[", "］": "]"})
+#: 作者-年份制的姓氏与年份（可带 a/b 消歧后缀）。拉丁姓氏含变音字母（Müller、Çelik）；
+#: 中文姓名取最短匹配，「张伟等, 2020」的键是「张伟」而不是「张伟等」。
+_LATIN = r"[A-ZÀ-ÖØ-ÞĀ-Ž][A-Za-zÀ-ÖØ-öø-ÿĀ-ž'’\-]+"
+_SURNAME = rf"{_LATIN}|[一-鿿]{{1,4}}?"
 _YEAR = r"\d{4}[a-z]?"
+_YEARS = rf"{_YEAR}(?:\s*[,，]\s*{_YEAR})*"
+_PARTICLES = r"(?:(?:van|von|de|der|den|la|le|da|di)\s+)*"
 APA_PART_RE = re.compile(
-    rf"^(?:(?:e\.g\.|see|cf\.|i\.e\.)[,\s]+)?(?:(?:van|von|de|der|den|la|le)\s+)*({_SURNAME})"
-    rf"(?:\s+et al\.?|\s+(?:and|&)\s+(?:{_SURNAME})|\s*(?:、|和|等)\s*(?:{_SURNAME})?)?\s*[,，]\s*({_YEAR})"
+    rf"^(?:(?:e\.g\.|see|cf\.|i\.e\.)[,\s]+)?{_PARTICLES}({_SURNAME})"
+    rf"(?:\s+et al\.?|\s+(?:and|&)\s+(?:{_SURNAME})|\s*(?:、|和|等)\s*(?:{_SURNAME})?)?\s*[,，]?\s*({_YEARS})"
     rf"(?:\s*[,，]\s*(?:p|pp)\.\s*[\d\-–]+)?$"
 )
+#: 叙述式只认拉丁姓氏：中文没有词边界，「研究表明张伟（2020）」切不出姓名——中文稿用 GB/T 顺序编码制。
+#: 边界只认 ASCII（\w 含汉字，「根据Smith (2020)」用 \w 作边界会漏检）。
 APA_NARRATIVE_RE = re.compile(
-    rf"(?<![\w(])({_SURNAME})(?:\s+et al\.?|\s+(?:and|&)\s+(?:{_SURNAME}))?\s*[(（]({_YEAR})[)）]"
+    rf"(?<![A-Za-z0-9_(]){_PARTICLES}({_LATIN})(?:\s+et al\.?|\s+(?:and|&)\s+(?:{_LATIN}))?\s*[(（]({_YEARS})[)）]"
 )
 APA_ENTRY_RE = re.compile(
-    rf"^\s*(?:[-*]\s*|\d+[.)]\s*)?(?:(?:van|von|de|der|den|la|le)\s+)*({_SURNAME})\s*[,，.].*?[(（]({_YEAR})[^)）]*[)）]"
+    rf"^\s*(?:[-*]\s*|\d+[.)]\s*)?{_PARTICLES}({_SURNAME})\s*[,，.].*?[(（]({_YEAR})[^)）]*[)）]"
 )
+
+
+def normalize_brackets(lines: list[tuple[int, str]]) -> list[tuple[int, str]]:
+    return [(n, line.translate(_BRACKETS).replace(r"\[", "[").replace(r"\]", "]")) for n, line in lines]
 
 
 def expand_numeric(group: str) -> list[int]:
@@ -137,7 +163,11 @@ def numeric_citations(lines: list[tuple[int, str]]) -> dict[str, int]:
 
 
 def numeric_entries(lines: list[tuple[int, str]]) -> dict[str, str]:
-    return {m.group(1): f"line {n}" for n, line in lines if (m := NUMERIC_ENTRY_RE.match(line))}
+    return {
+        m.group(1) or m.group(2): f"line {n}"
+        for n, line in lines
+        if (m := NUMERIC_ENTRY_RE.match(line))
+    }
 
 
 def apa_key(surname: str, year: str) -> str:
@@ -151,9 +181,11 @@ def apa_citations(lines: list[tuple[int, str]]) -> dict[str, int]:
         for group in re.findall(r"[(（]([^()（）]*\d{4}[a-z]?[^()（）]*)[)）]", line):
             for part in re.split(r"\s*[;；]\s*", group.strip()):
                 if match := APA_PART_RE.match(part.strip()):
-                    found.setdefault(apa_key(*match.groups()), number)
+                    for year in re.findall(_YEAR, match.group(2)):  # (Smith, 2020, 2022) 是两条
+                        found.setdefault(apa_key(match.group(1), year), number)
         for match in APA_NARRATIVE_RE.finditer(line):
-            found.setdefault(apa_key(*match.groups()), number)
+            for year in re.findall(_YEAR, match.group(2)):
+                found.setdefault(apa_key(match.group(1), year), number)
     return found
 
 

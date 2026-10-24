@@ -8,7 +8,9 @@ skill 目录被单独复制到 ~/.claude/skills/ 安装，不能跨目录 import
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import re
+import sys
 import unittest
 from pathlib import Path
 
@@ -43,6 +45,27 @@ class VendoredGateCoreTest(unittest.TestCase):
             with self.subTest(skill=skill):
                 text = (ROOT / skill / script).read_text(encoding="utf-8")
                 self.assertRegex(text, re.compile(r"^from integrity_gate import", re.M))
+
+    def test_each_gate_uses_its_own_copy_without_shadowing(self):
+        """导入后的函数必须就是本 skill 副本里的对象——本地重定义同名函数会让副本形同虚设。"""
+        shared = ("split_body", "reconcile", "pattern_hits", "finish", "read_text")
+        for skill, script in CARRIERS.items():
+            with self.subTest(skill=skill):
+                saved_path, saved_core = list(sys.path), sys.modules.pop("integrity_gate", None)
+                try:
+                    spec = importlib.util.spec_from_file_location(f"_gate_{skill}", ROOT / skill / script)
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    core = sys.modules["integrity_gate"]
+                    self.assertEqual(Path(core.__file__).resolve(), (ROOT / skill / CORE).resolve())
+                    for name in shared:
+                        if hasattr(module, name):
+                            self.assertIs(getattr(module, name), getattr(core, name), f"{skill}: {name} shadowed")
+                finally:
+                    sys.path[:] = saved_path
+                    sys.modules.pop("integrity_gate", None)
+                    if saved_core is not None:
+                        sys.modules["integrity_gate"] = saved_core
 
 
 if __name__ == "__main__":

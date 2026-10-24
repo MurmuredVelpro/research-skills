@@ -122,12 +122,19 @@ def main(argv: list[str] | None = None) -> int:
         if not path.is_file():
             return usage_error(f"{label} not found: {path}")
 
+    try:
+        findings, warnings = run_checks(args)
+    except UnicodeDecodeError as error:
+        return usage_error(f"an input file is not UTF-8: {error.reason}")
+    except ValueError as error:  # InputError and a ledger without a value column
+        return usage_error(str(error))
+    return finish(findings, warnings, "check_paper")
+
+
+def run_checks(args: argparse.Namespace) -> tuple[list[Finding], list[Finding]]:
     text = read_text(args.draft)
     body, _refs = split_body(text)
-    try:
-        findings = check_numbers(args.draft, body, args.ledger)
-    except ValueError as error:
-        return usage_error(str(error))
+    findings = check_numbers(args.draft, body, args.ledger)
     findings += check_citations(args.draft, body, args.bib, set(args.allow_uncited))
     pattern_findings, warnings = check_patterns(args.draft, text, args.allow_disclosed_flags)
     findings += pattern_findings
@@ -141,8 +148,7 @@ def main(argv: list[str] | None = None) -> int:
             findings.append(Finding("checklist-missing", str(directory),
                                     "no checklist_*.md next to the draft (REPORTING_CHECKLISTS step 4)"))
         findings += check_checklists(checklists)
-
-    return finish(findings, warnings, "check_paper")
+    return findings, warnings
 
 
 if __name__ == "__main__":

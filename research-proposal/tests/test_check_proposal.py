@@ -174,6 +174,107 @@ class CheckProposalTest(unittest.TestCase):
                 self.assertNotIn("scaffold-bracket", out)
                 self.assertEqual(code, 0, out)
 
+    # --- regressions: stage-2 adversary findings ------------------------------------------
+
+    def test_numbered_list_references_are_reconciled_not_skipped(self):
+        # 回归（对抗方 S2 阻断）：文献表写成 `1. …` 时 auto 回退 APA，数字引用整体被忽略
+        text = NUMERIC_CLEAN.replace("[1] 史密斯", "1. 史密斯").replace("[2] 加西亚", "2. 加西亚")
+        text = text.replace("[3] 王", "3. 王").replace("[4] 奥卡福", "4. 奥卡福")
+        code, out = self.run_gate(text)
+        self.assertEqual(code, 0, out)
+        code, out = self.run_gate(text.replace("[2, 4]", "[2, 5]"))
+        self.assertEqual(code, 1, out)
+        self.assertIn("[5] has no entry", out)
+
+    def test_escaped_and_fullwidth_brackets_are_normalized(self):
+        text = NUMERIC_CLEAN.replace("成本高昂[1]", "成本高昂\\[1\\]").replace("[2, 4]", "［2, 5］")
+        code, out = self.run_gate(text)
+        self.assertEqual(code, 1, out)
+        self.assertIn("[5] has no entry", out)
+        self.assertNotIn("[1] is listed but never cited", out)  # 转义的 \\[1\\] 仍算引用
+
+    def test_fullwidth_comma_in_numeric_citation(self):
+        code, out = self.run_gate(NUMERIC_CLEAN.replace("[2, 4]", "[2，4]"))
+        self.assertEqual(code, 0, out)
+        code, out = self.run_gate(NUMERIC_CLEAN.replace("[2, 4]", "[2，5]"))
+        self.assertEqual(code, 1, out)
+
+    def test_mixed_citation_styles_fail(self):
+        code, out = self.run_gate(NUMERIC_CLEAN.replace("成本高昂[1]", "成本高昂[1] (Smith, 2024)"))
+        self.assertEqual(code, 1, out)
+        self.assertIn("[mixed-citation-style]", out)
+
+    def test_explicit_style_mismatch_fails(self):
+        code, out = self.run_gate(NUMERIC_CLEAN, "--style", "apa")
+        self.assertEqual(code, 1, out)
+        self.assertIn("[style-mismatch]", out)
+
+    def test_latin_narrative_after_cjk_and_diacritic_surnames(self):
+        text = APA_CLEAN + "\n## 补充\n\n根据Okafor et al. (2019)，又见 (Müller, 2020)。\n"
+        # 新段落在 References 之后但是同级标题 → 回到正文；两处都是孤儿引用
+        code, out = self.run_gate(text)
+        self.assertEqual(code, 1, out)
+        self.assertIn("okafor, 2019 has no entry", out)
+        self.assertIn("müller, 2020 has no entry", out)
+
+    def test_chinese_et_al_is_keyed_by_the_surname(self):
+        text = APA_CLEAN.replace("(Smith, 2024)", "（张伟等，2024）").replace(
+            "Smith, J. (2024). Costs", "张伟, 李四. (2024). Costs")
+        code, out = self.run_gate(text)
+        self.assertEqual(code, 0, out)
+
+    def test_no_comma_and_multi_year_apa_forms(self):
+        text = APA_CLEAN.replace("(Smith, 2024)", "(Smith 2024)").replace(
+            "(Garcia & Lee, 2023; Wang et al., 2022a)", "(Garcia & Lee, 2023; Wang et al. 2022a, 2022b)")
+        code, out = self.run_gate(text)
+        self.assertEqual(code, 1, out)
+        self.assertIn("wang, 2022b has no entry", out)
+        self.assertNotIn("smith, 2024", out)
+
+    def test_references_subheadings_stay_in_the_references_section(self):
+        text = NUMERIC_CLEAN.replace("[3] 王", "### 外文文献\n\n[3] 王") + "[5] 未引. 题名[J]. 刊, 2020.\n"
+        code, out = self.run_gate(text)
+        self.assertEqual(code, 1, out)
+        self.assertRegex(out, r"\[entry-never-cited\] .*\[5\]")
+
+    def test_leftover_instruction_in_references_fails_but_apa_descriptors_pass(self):
+        code, out = self.run_gate(APA_CLEAN + "\n[Follow appropriate citation style: APA, MLA, or Chicago]\n")
+        self.assertEqual(code, 1, out)
+        self.assertIn("[scaffold-bracket]", out)
+        code, out = self.run_gate(NUMERIC_CLEAN + "\n*总字数：[约5,000字，不含参考文献]*\n")
+        self.assertEqual(code, 1, out)
+        self.assertIn("[scaffold-bracket]", out)
+        code, out = self.run_gate(APA_CLEAN.replace("*Sensors*, 24(3), 77-90.",
+                                                   "*Sensors*, 24(3), 77-90. [Data set]"))
+        self.assertEqual(code, 0, out)
+
+    def test_gbt_document_type_codes_are_not_scaffold(self):
+        code, out = self.run_gate(NUMERIC_CLEAN.replace("[C]// KDD", "[EB/OL]. (2021-01-02)[2024-01-01]"))
+        self.assertNotIn("scaffold-bracket", out)
+
+    def test_disclosure_flag_does_not_excuse_other_placeholders(self):
+        text = APA_CLEAN.replace("4(2), 1-20.", "4(2), 1-20. doi:10.xxxx/abc")
+        code, out = self.run_gate(text, "--allow-disclosed-flags")
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL [placeholder]", out)
+
+    def test_ai_tell_inside_references_titles_is_not_body(self):
+        text = APA_CLEAN.replace("Costs of rare-event detection", "A study that sheds light on costs")
+        code, out = self.run_gate(text)
+        self.assertEqual(code, 0, out)
+
+    def test_figure_label_exemption_is_exact(self):
+        code, out = self.run_gate(APA_CLEAN.replace("[Figure 1 Suggestion]", "[Figure 1 Suggestion: write caption here]"))
+        self.assertEqual(code, 1, out)
+        self.assertIn("[scaffold-bracket]", out)
+
+    def test_non_utf8_file_is_usage_error(self):
+        self.path.write_bytes("成本高昂[1]".encode("gbk"))
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = check_proposal.main([str(self.path)])
+        self.assertEqual(code, 2)
+
     def test_missing_file_is_usage_error(self):
         out = io.StringIO()
         with redirect_stdout(out):

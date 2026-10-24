@@ -243,6 +243,11 @@ class CheckPaperTest(unittest.TestCase):
 
     # --- usage -------------------------------------------------------------------------------
 
+    def test_non_utf8_draft_is_usage_error(self):
+        (self.dir / "paper_draft.md").write_bytes("灵敏度为0.912".encode("gbk"))
+        code, _ = self.run_gate()
+        self.assertEqual(code, 2)
+
     def test_missing_input_is_usage_error_not_pass(self):
         (self.dir / "references.bib").unlink()
         code, _ = self.run_gate()

@@ -27,11 +27,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from integrity_gate import (  # noqa: E402
     Finding,
+    InputError,
     apa_citations,
     apa_entries,
     finish,
     numeric_citations,
     numeric_entries,
+    normalize_brackets,
     pattern_hits,
     read_text,
     reconcile,
@@ -57,26 +59,46 @@ EXEMPT_BRACKETS = {
 }
 EXEMPT_BRACKET_RE = re.compile(r"^(Figure \d+ Suggestion|图\s*\d+\s*建议)$")
 BRACKET_RE = re.compile(r"(?<!!)\[([^\]\n]+)\](?![(\[:])")
-NOT_SCAFFOLD_RE = re.compile(r"^(\d+(\s*[-–—,，]\s*\d+)*|[ xX]|\^.*|@.*|UNVERIFIED.*|TBD)$")
+REF_INSTRUCTION_RE = re.compile(r"^[*_>\s]*(?:[^\[\]]{0,12}[:：]\s*)?\[([^\]\n]+)\]")
+#: 不是 scaffold 残留的方括号：顺序编码引文、复选框、脚注、citekey、旗标（另有占位符门禁），
+#: 以及 GB/T 7714 文献类型标识 [J] [M] [C] [EB/OL] 与引用日期 [2024-01-01]
+NOT_SCAFFOLD_RE = re.compile(
+    r"^(\d+(\s*[-–—,，]\s*\d+)*|[ xX]|\^.*|@.*|UNVERIFIED.*|TBD|[A-Z]{1,2}(/OL)?|\d{4}-\d{2}-\d{2})$"
+)
 
 
 def check_citations(path: Path, body, refs, style: str) -> list[Finding]:
+    numeric_cited, apa_cited = numeric_citations(body), apa_citations(body)
     if not refs:
         # 没有文献表时无从判断制式——两种都数，任何一处引用都说明文献表丢了
-        count = len(numeric_citations(body)) + len(apa_citations(body))
+        count = len(numeric_cited) + len(apa_cited)
         return [Finding("no-references-section", path.name,
                         f"{count} in-text citation(s) but no '## References' / '## 参考文献' section")
                 ] if count else []
+    findings: list[Finding] = []
+    if numeric_cited and apa_cited:
+        # 只按一种制式对账会把另一种引用整体漏掉——宁可失败也不静默放过
+        findings.append(Finding("mixed-citation-style", path.name,
+                                f"{len(numeric_cited)} numeric [N] and {len(apa_cited)} author-year "
+                                "citations in one text — use one style throughout"))
     if style == "auto":
-        style = "numeric" if numeric_entries(refs) else "apa"
+        if numeric_cited or apa_cited:
+            style = "numeric" if len(numeric_cited) >= len(apa_cited) else "apa"
+        else:
+            style = "numeric" if any(line.lstrip().startswith("[") for _, line in refs) else "apa"
+    elif (style == "numeric" and apa_cited and not numeric_cited) or (
+        style == "apa" and numeric_cited and not apa_cited
+    ):
+        findings.append(Finding("style-mismatch", path.name,
+                                f"--style {style} but the in-text citations are the other style"))
     if style == "numeric":
-        cited, listed = numeric_citations(body), numeric_entries(refs)
-        cited = {f"[{key}]": line for key, line in cited.items()}
-        listed = {f"[{key}]": f"{path.name} References {where}" for key, where in listed.items()}
+        cited = {f"[{key}]": line for key, line in numeric_cited.items()}
+        listed = {f"[{key}]": f"{path.name} References {where}"
+                  for key, where in numeric_entries(refs).items()}
     else:
-        cited, listed = apa_citations(body), apa_entries(refs)
-        listed = {key: f"{path.name} References {where}" for key, where in listed.items()}
-    return reconcile(cited, listed, path.name, "the References list")
+        cited = apa_cited
+        listed = {key: f"{path.name} References {where}" for key, where in apa_entries(refs).items()}
+    return findings + reconcile(cited, listed, path.name, "the References list")
 
 
 def check_patterns(path: Path, text: str, body, allow_flags: bool):
@@ -93,16 +115,26 @@ def check_patterns(path: Path, text: str, body, allow_flags: bool):
     return findings, warnings
 
 
-def check_scaffold_brackets(path: Path, body) -> list[Finding]:
-    findings: list[Finding] = []
-    for number, line in body:
-        for match in BRACKET_RE.finditer(line):
-            content = match.group(1).strip()
-            if (content in EXEMPT_BRACKETS or EXEMPT_BRACKET_RE.match(content)
-                    or NOT_SCAFFOLD_RE.match(content)):
-                continue
-            findings.append(Finding("scaffold-bracket", f"{path.name}:{number}",
-                                    f"leftover scaffold field '[{content[:60]}]'"))
+def _scaffold_hit(path: Path, number: int, content: str) -> Finding | None:
+    content = content.strip()
+    if content in EXEMPT_BRACKETS or EXEMPT_BRACKET_RE.match(content) or NOT_SCAFFOLD_RE.match(content):
+        return None
+    return Finding("scaffold-bracket", f"{path.name}:{number}", f"leftover scaffold field '[{content[:60]}]'")
+
+
+def check_scaffold_brackets(path: Path, body, refs) -> list[Finding]:
+    findings = [
+        hit
+        for number, line in body
+        for match in BRACKET_RE.finditer(line)
+        if (hit := _scaffold_hit(path, number, match.group(1)))
+    ]
+    # 参考文献节里 APA 条目合法地带 [Doctoral dissertation] [Data set]——只查整行就是说明的残留，
+    # 例如 `[Follow appropriate citation style …]`、`*总字数：[约5,000字…]*`
+    for number, line in refs:
+        if match := REF_INSTRUCTION_RE.match(line):
+            if hit := _scaffold_hit(path, number, match.group(1)):
+                findings.append(hit)
     return findings
 
 
@@ -116,12 +148,15 @@ def main(argv: list[str] | None = None) -> int:
     if not args.proposal.is_file():
         return usage_error(f"proposal not found: {args.proposal}")
 
-    text = read_text(args.proposal)
-    body, refs = split_body(text)
+    try:
+        text = read_text(args.proposal)
+    except InputError as error:
+        return usage_error(str(error))
+    body, refs = (normalize_brackets(part) for part in split_body(text))
     findings = check_citations(args.proposal, body, refs, args.style)
     pattern_findings, warnings = check_patterns(args.proposal, text, body, args.allow_disclosed_flags)
     findings += pattern_findings
-    findings += check_scaffold_brackets(args.proposal, body)
+    findings += check_scaffold_brackets(args.proposal, body, refs)
     return finish(findings, warnings, "check_proposal")
 
 
