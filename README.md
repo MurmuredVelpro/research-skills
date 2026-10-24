@@ -99,7 +99,7 @@ Transform any content into stylized, shareable slide **images** (AI-generated), 
 - **Caption-based figure detection** from PDF papers (locates the page; human confirmation recommended for dense two-column layouts)
 - **Figure-to-slide mapping** with full-page high-res render + template container (not per-figure bbox cropping)
 - **17 visual styles** (academic-paper, sketch-notes, minimal, etc.)
-- **Gemini API integration** (`gemini-3-pro-image`) for AI slide generation, with a post-generation garbled-text proofread pass
+- **Gemini API integration** (`gemini-3-pro-image`) for AI slide generation, with an **enforced** proofread pass: every generated slide needs a recorded disposition bound to its bytes before PPTX/PDF merge
 - **PPTX/PDF export** with merge scripts
 
 ### Workflow
@@ -128,6 +128,7 @@ Transform any content into stylized, shareable slide **images** (AI-generated), 
 | `apply-template.ts` | Academic figure container template |
 | `merge-to-pptx.ts` | PPTX generation |
 | `merge-to-pdf.ts` | PDF generation |
+| `proofread.ts` | Proofread dispositions; merges refuse unproofread AI-generated slides |
 
 ---
 

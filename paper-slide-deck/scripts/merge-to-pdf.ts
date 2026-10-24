@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "fs";
 import { join, basename, resolve } from "path";
+import { proofreadGate, reportProofread } from "./proofread.ts";
 
 interface SlideInfo {
   filename: string;
@@ -50,25 +51,27 @@ function detectImageFormat(buf: Buffer): "png" | "jpg" {
   return "png";
 }
 
-function parseArgs(): { dir: string; output?: string } {
-  const args = process.argv.slice(2);
+function parseArgs(args: string[]): { dir: string; output?: string; allowUnproofread: boolean } {
   let dir = "";
   let output: string | undefined;
+  let allowUnproofread = false;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--output" || args[i] === "-o") {
       output = args[++i];
+    } else if (args[i] === "--allow-unproofread") {
+      allowUnproofread = true;
     } else if (!args[i].startsWith("-")) {
       dir = args[i];
     }
   }
 
   if (!dir) {
-    console.error("Usage: bun merge-to-pdf.ts <slide-deck-dir> [--output filename.pdf]");
+    console.error("Usage: bun merge-to-pdf.ts <slide-deck-dir> [--output filename.pdf] [--allow-unproofread]");
     process.exit(1);
   }
 
-  return { dir, output };
+  return { dir, output, allowUnproofread };
 }
 
 function findSlideImages(dir: string): SlideInfo[] {
@@ -224,9 +227,13 @@ export async function createPdf(PDFDocument: any, slides: SlideInfo[], outputPat
   console.log(`Total pages: ${slides.length}`);
 }
 
-async function main() {
-  const { dir, output } = parseArgs();
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+  const { dir, output, allowUnproofread } = parseArgs(argv);
   const slides = findSlideImages(dir);
+  // Step 6.5 gate: AI-generated slides must be proofread before they ship (scripts/proofread.ts).
+  if (reportProofread(proofreadGate(dir, slides, { allowUnproofread }), allowUnproofread) !== 0) {
+    return 1;
+  }
 
   const { PDFDocument } = await loadDep("pdf-lib", () => import("pdf-lib"));
 
@@ -238,13 +245,17 @@ async function main() {
   console.log(`Found ${slides.length} slides in: ${dir}\n`);
 
   await createPdf(PDFDocument, slides, outputPath);
+  return 0;
 }
 
 // Run only when executed directly (bun sets import.meta.main); tests import the
 // module for validateSlideNumbers without triggering CLI side effects.
 if ((import.meta as any).main) {
-  main().catch((err) => {
-    console.error("Error:", err.message);
-    process.exit(1);
-  });
+  main().then(
+    (code) => process.exit(code),
+    (err) => {
+      console.error("Error:", err.message);
+      process.exit(1);
+    }
+  );
 }

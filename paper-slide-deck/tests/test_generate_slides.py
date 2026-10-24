@@ -102,3 +102,31 @@ class TestWebpConversion:
     def test_corrupt_webp_raises_a_readable_error(self, gs):
         with pytest.raises(Exception, match="(?i)pillow|webp|image"):
             gs.convert_webp_to_png(b"not a webp at all")
+
+
+def test_record_generated_writes_sha_prompt_and_model(gs, tmp_path):
+    import hashlib
+    import json
+
+    slide = tmp_path / "03-slide-results.png"
+    slide.write_bytes(b"\x89PNG fake bytes")
+    gs.record_generated(tmp_path, slide, tmp_path / "prompts" / "03-slide-results.md", "gemini-x")
+    entry = json.loads((tmp_path / "generated.json").read_text())["slides"]["03-slide-results.png"]
+    assert entry == {
+        "sha256": hashlib.sha256(b"\x89PNG fake bytes").hexdigest(),
+        "prompt": "prompts/03-slide-results.md",
+        "model": "gemini-x",
+    }
+
+
+def test_record_generated_keeps_other_slides_and_replaces_a_new_extension(gs, tmp_path):
+    import json
+
+    (tmp_path / "01-slide-cover.png").write_bytes(b"a")
+    gs.record_generated(tmp_path, tmp_path / "01-slide-cover.png", tmp_path / "p" / "01-slide-cover.md", "m")
+    (tmp_path / "02-slide-x.png").write_bytes(b"b")
+    gs.record_generated(tmp_path, tmp_path / "02-slide-x.png", tmp_path / "p" / "02-slide-x.md", "m")
+    (tmp_path / "02-slide-x.jpg").write_bytes(b"c")
+    gs.record_generated(tmp_path, tmp_path / "02-slide-x.jpg", tmp_path / "p" / "02-slide-x.md", "m")
+    slides = json.loads((tmp_path / "generated.json").read_text())["slides"]
+    assert sorted(slides) == ["01-slide-cover.png", "02-slide-x.jpg"]
