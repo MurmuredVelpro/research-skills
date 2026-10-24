@@ -123,6 +123,11 @@ Append only. The human rules on each at landing.
 | R10 | s2-targets | claude subagent | C2: leftover instructions under References unchecked; `### 外文文献` sub-heading ended the references section early | minor-fixed | 60ff5e9 (heading-level aware split_body, REF_INSTRUCTION_RE); tests `test_references_subheadings_stay_in_the_references_section`, `test_leftover_instruction_in_references_fails_but_apa_descriptors_pass` |
 | R11 | s2-targets | claude subagent | targets marked expected survivors: full-width comma, disclosure guard, AI-tell body-only, figure-label anchor, non-UTF-8 → exit 2 | minor-fixed | 60ff5e9 tests `test_fullwidth_comma_in_numeric_citation`, `test_disclosure_flag_does_not_excuse_other_placeholders`, `test_ai_tell_inside_references_titles_is_not_body`, `test_figure_label_exemption_is_exact`, `test_non_utf8_file_is_usage_error` (+ research-paper `test_non_utf8_draft_is_usage_error`) |
 | R12 | s2-targets | claude subagent | C3: import test text-only; local redefinition would pass | minor-fixed | 60ff5e9 `test_each_gate_uses_its_own_copy_without_shadowing` (module identity) |
+| R13 | s3-targets | claude subagent | C4: judge-API (jev) path's `parameters.sample` untested | minor-fixed | 2f9d568 test `TestScreenSampleJev::test_jev_random_trial_records_the_sample` |
+| R14 | s3-targets | claude subagent | C4: CLI test could not tell whether the given seed reaches selection (seed 5 and default 0 pick the same record) | minor-fixed | 2f9d568 test `test_the_given_seed_reaches_the_selection` (seed 1 picks a different record than seed 0) |
+| R15 | s3-targets | claude subagent | C4: `--resume` with a random sample could mix two samples; `--seed` silently accepted with head | minor-fixed | 2f9d568 both refused with exit 2, test `test_seed_without_random_and_resume_with_random_are_refused` |
+| R16 | s4-targets | claude subagent | C5: qa_report wiring test only matched source text | minor-fixed | 6322428 spec-only findings split into `specFindings`; test `qa_report carries deck-type findings into the CKPT-3 report` |
+| R17 | s4-targets | claude subagent | C5: "Limitations of existing methods" satisfied the defense rule; a divider merely mentioning backup, or followed only by Q&A, counted as an appendix | minor-fixed | 6322428 PRIOR_WORK_RE, anchored BACKUP_RE, CLOSING_RE; five regression tests in deck_type.test.mjs |
 
 ### Parked
 

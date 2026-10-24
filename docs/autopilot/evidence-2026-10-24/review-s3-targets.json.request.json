@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "job_id": "722b253708744855bab126c944609298",
+  "inputs": {
+    "repository": "/home/ubuntu/jason/research/research-skills",
+    "base": "98b1ffea0f093462c88ed7c30d6bb2293cfc6e7c",
+    "head": "9fab69ae2920ddd0f25d49a6c405335fea13fc26",
+    "scope": "stage 3",
+    "record": "docs/autopilot/runs/2026-10-24-six-skill-takeoff.md",
+    "files": {
+      "docs/autopilot/runs/2026-10-24-six-skill-takeoff.md": "e04bd1b2825aeb221579273e13eee2113a115b695e14b5666f74e45fd57bff07",
+      "docs/autopilot.md": "b91d50480b9d234768b4bc507d4609dd32cbc41e6efa40fc87ee4c422a9aa409",
+      "docs/autopilot-policy.json": "006a3b82507eccbc73d905f97865b910880d4d6b1c03454a79fc2ab409905e28"
+    },
+    "execution_policy": {
+      "path": "docs/autopilot-policy.json",
+      "sha256": "006a3b82507eccbc73d905f97865b910880d4d6b1c03454a79fc2ab409905e28",
+      "effective": {
+        "record_paths": {
+          "evidence_dir": "docs/autopilot/evidence-2026-10-24",
+          "run_record": "docs/autopilot/runs/2026-10-24-six-skill-takeoff.md"
+        },
+        "write_dirs": [
+          "scholar-slides/node_modules",
+          "paper-slide-deck/scripts/node_modules"
+        ],
+        "version": 1,
+        "sandbox": "bwrap",
+        "deny_network": true,
+        "deny_paths": [],
+        "read_paths": [
+          "/usr",
+          "/usr/bin",
+          "/bin",
+          "/usr/sbin",
+          "/sbin",
+          "/usr/lib",
+          "/lib",
+          "/usr/lib64",
+          "/lib64",
+          "/System/Library",
+          "/Library/Apple",
+          "/private/var/db/dyld",
+          "/private/etc",
+          "/etc",
+          "/dev",
+          "/home/ubuntu/jason/research/.autopilot-deps"
+        ],
+        "env": [
+          "PLAYWRIGHT_BROWSERS_PATH"
+        ]
+      }
+    },
+    "brief_sha256": "5de3904e89a2de95c9b6ac96fd33c75ad26c6a000dc38ec5674b6c5b91444a6f",
+    "schema_sha256": "9451e0d6d4e0ac10971c9035a04b4fffd1e054d82444c9a1bd4742d8dcf5eff6"
+  },
+  "input_sha256": "c59e8ede6e4adf6b7c9ff53ef373e80d792a09dc07387bc5e7749b0017c5185b"
+}
