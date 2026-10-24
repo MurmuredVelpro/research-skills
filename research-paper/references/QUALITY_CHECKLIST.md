@@ -7,6 +7,12 @@ the proposal skill: your own numbers are the fabrication risk here.
 
 ## Mechanical gates
 
+- [ ] **Executable gate** exits 0 (paste its output): covers the four gates
+      below — numbers ↔ ledger, `[@citekey]` ↔ `references.bib`, placeholder /
+      AI-tell patterns, checklist dispositions:
+      `python3 <skill_dir>/scripts/check_paper.py paper_draft.md --ledger results_ledger.csv --bib references.bib`
+      The manual commands below remain the fallback without Python and the
+      explanation of what each check means.
 - [ ] Placeholder gate returns 0 hits, or every `[UNVERIFIED]`/`[PENDING]` is
       explicitly disclosed and never presented as real:
       `grep -nE "xxx|XXXX|\[TBD\]|\[PENDING|\[UNVERIFIED[^]]*\]|10\.xxxx|doi:10\.[a-z]+/x" paper_draft.md`
