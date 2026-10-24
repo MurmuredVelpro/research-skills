@@ -223,12 +223,19 @@ class ImportLitsearchTest(unittest.TestCase):
     def test_dangling_symlink_at_the_export_path_is_refused(self):
         exports = self.project / "search/exports"
         exports.mkdir(parents=True, exist_ok=True)
-        (exports / f"litsearch-{RUN_ID}").symlink_to(self.project / "nowhere")
+        link = exports / f"litsearch-{RUN_ID}"
+        link.symlink_to(self.project / "nowhere")
         before = self.snapshot()
-        code, out = self.run_import()
+        try:
+            code, out = self.run_import()
+            after = self.snapshot()
+        finally:
+            link.unlink(missing_ok=True)  # tearDown 的 chmod 会跟随悬空链接而报错
+            if link.is_dir():
+                IMPORT.remove_export(link)
         self.assertEqual(code, 2, out)
         self.assertIn("already exists", out)
-        self.assertEqual(self.snapshot(), before)
+        self.assertEqual(after, before)
 
     def test_not_a_review_project_is_refused(self):
         code, out = self.run_import("--project-dir", str(self.run))
