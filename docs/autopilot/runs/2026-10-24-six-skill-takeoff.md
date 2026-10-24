@@ -10,7 +10,7 @@
 - host: strict (bwrap usable; `host-doctor.sh` at 98b1ffe)
 - policy: docs/autopilot-policy.json at the pinned commit
 - helper pin: 3790b927c7b72d6896ca0ce3d0189e16b5efe750f13c858e2e2232badf1ad3c0
-- current: stage 3 + stage 4 review targets (head HEAD_PLACEHOLDER); C1–C3 mutant wave
+- current: stage 5 + stage 6 review targets; then stage 3/4 findings recorded; full mutant wave after code freeze
 
 ## Goal
 
@@ -94,8 +94,8 @@ Append only. The human rules on each at landing.
 2. [x] research-proposal executable gate + shared core + 开题报告篇幅 — owns C2, C3 (540e4fd)
 3. [x] lit-search seeded random calibration sample — owns C4 (b42d040)
 4. [x] scholar-slides deck-type audit — owns C5 (a138810)
-5. [ ] paper-slide-deck proofread gate — owns C6
-6. [ ] medical-imaging-review lit-search import + duplicated sentence — owns C7
+5. [x] paper-slide-deck proofread gate — owns C6 (3e56794)
+6. [x] medical-imaging-review lit-search import + duplicated sentence — owns C7 (see git log)
 
 ## Ledger
 
