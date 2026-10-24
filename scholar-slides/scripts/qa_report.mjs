@@ -4,7 +4,7 @@
 // It does NOT certify truth (only a human can) — it surfaces every defect and every flag.
 import fs from "node:fs";
 import path from "node:path";
-import { groundNumbers, collectFlags, layoutMix, emphasisAudit, figureCrowding, emojiAudit } from "./lib/qa.mjs";
+import { groundNumbers, collectFlags, layoutMix, emphasisAudit, figureCrowding, emojiAudit, deckTypeAudit } from "./lib/qa.mjs";
 import { buildFigMeta } from "./lib/render_checks.mjs";
 import { timingReport } from "./lib/notes.mjs";
 import { validateDeck } from "./validate_deck.mjs";
@@ -55,6 +55,8 @@ export async function qaReport(deckDir, sourceDir) {
     findings.push({ stage: "integrity", check: "flag", severity: "P1", slide: fl.slide,
       detail: `${fl.flag} (${fl.field}) — must be acknowledged at CKPT-3` });
   }
+  // Deck-type archetypes: what this kind of talk owes its audience (references/deck-types.md).
+  for (const d of deckTypeAudit(deck)) findings.push({ stage: "deck-type", ...d });
   const timing = timingReport(deck);
   if (timing.withoutNotes.length) {
     findings.push({ stage: "notes", check: "missing-speaker-notes", severity: "P3",
