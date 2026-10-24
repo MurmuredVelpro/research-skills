@@ -17,6 +17,11 @@ if any **P1** (review required), `0` if only P2/P3.
      (table/equation = P1, other = P2). Scientific notation is normalized (`10²⁰` → `1020`).
    - **Flags** — every literal `[MISSING]` / `[UNVERIFIED]` / `[REDRAWN]` / `[GENERATED]` is
      collected (P1) and must be acknowledged at CKPT-3.
+   - **Deck type** (`deckTypeAudit`) — what `meta.deck_type` owes its audience: 组会 critique +
+     discussion slides (P2 each), 答辩 Backup appendix + own limitations/future work (P2 each),
+     no critique slide in a conference teaser (P3), unknown type (P1). Table in
+     `references/deck-types.md`. These spec-only checks run in `specFindings`, testable without
+     a browser.
 2. **Static validation** (`validate_deck.mjs`, on built `deck.html`):
    - layout lock (every `data-layout` is a registered layout — P0), KaTeX error spans (P1),
      unrendered `$math$` (P2), missing figure files (P1).

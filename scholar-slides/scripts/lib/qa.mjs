@@ -166,8 +166,13 @@ export function figureCrowding(deck, { maxChars = 240 } = {}) {
 // a conference teaser owes neither critique nor survey. Absent meta.deck_type means the default
 // journal club. Returns findings with severity; qa_report wires them in.
 export const DECK_TYPES = ["journal-club", "conference", "defense"];
-const BACKUP_RE = /\b(backup|appendix)\b|附录|备用|备份/i;
-const LIMITS_RE = /\blimitations?\b|\bfuture work\b|\bfuture directions?\b|局限|不足|展望|未来工作/i;
+// The divider must BE the backup (title starts with the word), not merely mention one.
+const BACKUP_RE = /^\s*(backup|appendix|附录|备用|备份)(?=$|[\s:：\-–—(（]|slides)/i;
+// Own limitations / future work — not a motivation slide about prior work's shortcomings.
+const LIMITS_RE = /\blimitations?\b|\bfuture (work|directions?)\b|局限|展望|未来工作|不足/i;
+const PRIOR_WORK_RE = /\b(existing|prior|previous|related|baselines?|state[- ]of[- ]the[- ]art)\b|现有|已有|传统|以往|前人/i;
+// A closing slide after the Backup divider does not make an appendix.
+const CLOSING_RE = /\b(thank(s| you)?|questions?|q\s*&\s*a)\b|谢谢|致谢|提问/i;
 
 export function deckTypeAudit(deck) {
   const slides = deck.slides || [];
@@ -186,11 +191,13 @@ export function deckTypeAudit(deck) {
     }
   } else if (type === "defense") {
     const backup = slides.findIndex((s) => s.layout === "section" && BACKUP_RE.test(titleOf(s)));
-    if (backup === -1 || backup === slides.length - 1) {
+    const appendix = backup === -1 ? [] : slides.slice(backup + 1)
+      .filter((s) => s.layout !== "section" && !CLOSING_RE.test(titleOf(s)));
+    if (!appendix.length) {
       out.push({ check: "missing-backup", severity: "P2",
         detail: "defense deck has no Backup/Appendix section divider followed by at least one slide — examiners' questions need it" });
     }
-    if (!slides.some((s) => LIMITS_RE.test(titleOf(s)))) {
+    if (!slides.some((s) => LIMITS_RE.test(titleOf(s)) && !PRIOR_WORK_RE.test(titleOf(s)))) {
       out.push({ check: "missing-limitations", severity: "P2",
         detail: "defense deck has no slide titled for limitations or future work" });
     }

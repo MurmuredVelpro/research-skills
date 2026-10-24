@@ -3,8 +3,8 @@
 // named, an unknown type is P1.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
 import { deckTypeAudit, DECK_TYPES } from "../scripts/lib/qa.mjs";
+import { specFindings } from "../scripts/qa_report.mjs";
 
 const s = (layout, title, extra = {}) => ({ layout, action_title: title, ...extra });
 
@@ -96,7 +96,47 @@ test("unknown deck_type is P1 naming the allowed values", () => {
   for (const t of DECK_TYPES) assert.match(findings[0].detail, new RegExp(t));
 });
 
-test("qa_report wires deckTypeAudit into the CKPT-3 report", () => {
-  const src = fs.readFileSync(new URL("../scripts/qa_report.mjs", import.meta.url), "utf-8");
-  assert.match(src, /for \(const d of deckTypeAudit\(deck\)\) findings\.push\(\{ stage: "deck-type", \.\.\.d \}\)/);
+test("qa_report carries deck-type findings into the CKPT-3 report", () => {
+  const findings = specFindings({ meta: { deck_type: "defense" }, slides: [s("paper-title", "Thesis")] }, "");
+  const deckType = findings.filter((f) => f.stage === "deck-type").map((f) => f.check).sort();
+  assert.deepEqual(deckType, ["missing-backup", "missing-limitations"]);
+  assert.deepEqual(specFindings(DEFENSE, "").filter((f) => f.stage === "deck-type"), []);
+});
+
+// ---- regressions: stage-4 adversary findings ----
+
+test("defense: a motivation slide about prior work's limitations is not the thesis's own", () => {
+  for (const title of ["Limitations of existing methods", "现有方法的不足", "Prior work and its limitations"]) {
+    const slides = DEFENSE.slides.map((x) =>
+      x.action_title === "Limitations and future work" ? { ...x, action_title: title } : x);
+    assert.deepEqual(checks(deckTypeAudit({ ...DEFENSE, slides })), ["P2:missing-limitations"], title);
+  }
+});
+
+test("defense: 'Limitations' alone and 'Future work' alone each satisfy the rule", () => {
+  for (const title of ["Limitations", "Future work", "研究局限", "未来工作"]) {
+    const slides = DEFENSE.slides.map((x) =>
+      x.action_title === "Limitations and future work" ? { ...x, action_title: title } : x);
+    assert.deepEqual(deckTypeAudit({ ...DEFENSE, slides }), [], title);
+  }
+});
+
+test("defense: only a closing Q&A after the Backup divider is not an appendix", () => {
+  const slides = [...DEFENSE.slides.slice(0, -1), s("bullets", "Thank you — Questions?", { points: ["q"] })];
+  assert.deepEqual(checks(deckTypeAudit({ ...DEFENSE, slides })), ["P2:missing-backup"]);
+});
+
+test("defense: a divider that merely mentions backup, or a non-divider titled Backup, does not count", () => {
+  const mentions = DEFENSE.slides.map((x) => (x.title === "Backup" ? { ...x, title: "Data backup strategy" } : x));
+  assert.deepEqual(checks(deckTypeAudit({ ...DEFENSE, slides: mentions })), ["P2:missing-backup"]);
+  const notDivider = DEFENSE.slides.map((x) =>
+    x.title === "Backup" ? s("bullets", "Backup", { points: ["x"] }) : x);
+  assert.deepEqual(checks(deckTypeAudit({ ...DEFENSE, slides: notDivider })), ["P2:missing-backup"]);
+});
+
+test("defense: 'Backup slides' and 'Appendix: proofs' dividers count", () => {
+  for (const title of ["Backup slides", "Appendix: proofs", "附录：补充实验"]) {
+    const slides = DEFENSE.slides.map((x) => (x.title === "Backup" ? { ...x, title } : x));
+    assert.deepEqual(deckTypeAudit({ ...DEFENSE, slides }), [], title);
+  }
 });

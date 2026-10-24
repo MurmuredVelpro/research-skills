@@ -36,12 +36,9 @@ export function renderReviewFindings(deckDir) {
   return [];
 }
 
-export async function qaReport(deckDir, sourceDir) {
-  sourceDir = sourceDir || path.resolve(deckDir, "..");
-  const deck = JSON.parse(fs.readFileSync(path.join(sourceDir, "deck.json"), "utf-8"));
-  const ingestPath = path.join(sourceDir, "ingest.json");
-  const sourceText = fs.existsSync(ingestPath) ? JSON.parse(fs.readFileSync(ingestPath, "utf-8")).full_text || "" : "";
-
+// Findings that need only deck.json (+ source text): integrity, deck type, notes, aesthetics nudges.
+// Split out so they are testable without a browser; qaReport adds validate/render/review stages.
+export function specFindings(deck, sourceText = "") {
   const findings = [];
   if (sourceText) {
     for (const g of groundNumbers(deck, sourceText)) {
@@ -90,6 +87,18 @@ export async function qaReport(deckDir, sourceDir) {
     findings.push({ stage: "aesthetics", check: "over-highlighted", severity: "P3",
       detail: `slide(s) ${emph.over.join(", ")} use >${emph.maxAdded} added emphasis treatments — reads as over-marked; keep metric/positive/warn to <=2 per slide (key/accent is free)` });
   }
+  findings._timing = timing;
+  return findings;
+}
+
+export async function qaReport(deckDir, sourceDir) {
+  sourceDir = sourceDir || path.resolve(deckDir, "..");
+  const deck = JSON.parse(fs.readFileSync(path.join(sourceDir, "deck.json"), "utf-8"));
+  const ingestPath = path.join(sourceDir, "ingest.json");
+  const sourceText = fs.existsSync(ingestPath) ? JSON.parse(fs.readFileSync(ingestPath, "utf-8")).full_text || "" : "";
+
+  const findings = specFindings(deck, sourceText);
+  const timing = findings._timing;
   for (const v of validateDeck(deckDir)) findings.push({ stage: "validate", ...v });
   // Exact figure-legibility projection needs the crop metadata detect_figures emitted.
   const figuresPath = path.join(sourceDir, "figures.json");
