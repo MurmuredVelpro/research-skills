@@ -10,7 +10,7 @@
 - host: strict (bwrap usable; `host-doctor.sh` at 98b1ffe)
 - policy: docs/autopilot-policy.json at the pinned commit
 - helper pin: 3790b927c7b72d6896ca0ce3d0189e16b5efe750f13c858e2e2232badf1ad3c0
-- current: stage 1 review targets (head 8243c27)
+- current: stage 2 review targets (head 540e4fd); stage 1 mutant wave next
 
 ## Goal
 
@@ -90,8 +90,8 @@ Append only. The human rules on each at landing.
 
 ## Stages
 
-1. [ ] research-paper executable gate — owns C1
-2. [ ] research-proposal executable gate + shared core + 开题报告篇幅 — owns C2, C3
+1. [x] research-paper executable gate — owns C1 (8243c27, fixes f71400c)
+2. [x] research-proposal executable gate + shared core + 开题报告篇幅 — owns C2, C3 (540e4fd)
 3. [ ] lit-search seeded random calibration sample — owns C4
 4. [ ] scholar-slides deck-type audit — owns C5
 5. [ ] paper-slide-deck proofread gate — owns C6
@@ -111,6 +111,12 @@ Append only. The human rules on each at landing.
 
 | id | round | reviewer | finding | status | note |
 |---|---|---|---|---|---|
+| R1 | s1-targets | claude subagent (same family) | C1(a): `\w` boundaries in METRIC_RE match CJK, so numbers in Chinese prose (`AUC为0.912`) were never checked | blocking-fixed | reproduced (metric_numbers → []); fixed f71400c, test `test_numbers_in_chinese_prose_are_checked` |
+| R2 | s1-targets | claude subagent | C1(a): every `[...]` stripped before number matching, so bracketed CIs / link text escaped | blocking-fixed | reproduced; fixed f71400c (strip only flags, citations, URLs), test `test_bracketed_confidence_interval_is_checked` |
+| R3 | s1-targets | claude subagent | disclosure guard untested: `--allow-disclosed-flags` could downgrade fake DOIs | minor-fixed | f71400c, test `test_disclosure_flag_does_not_excuse_other_placeholders` |
+| R4 | s1-targets | claude subagent | ledger `1,204` read as 1 and 204 → false number-not-in-ledger | minor-fixed | reproduced; f71400c NUMBER_RE, test `test_thousands_separator_matches_the_ledger` |
+| R5 | s1-targets | claude subagent | checklist row missing its disposition cell accepted; `- [ ]` and TBD branches untested | minor-fixed | reproduced (`| 3. Data sources |` → []); f71400c, test `test_checklist_unchecked_box_tbd_and_missing_cell_fail` |
+| R6 | s1-targets | claude subagent | references-section exclusion not exercised by any test | minor-fixed | f71400c, test `test_references_section_numbers_are_excluded` |
 
 ### Parked
 
