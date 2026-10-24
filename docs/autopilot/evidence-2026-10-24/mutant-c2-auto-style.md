@@ -1,0 +1,189 @@
+# Mutant — mutant-c2-auto-style
+
+- tested commit: eced80c47145e624d06bc3bd330226fcb93cb3eb
+- HEAD: c55bf35f07847b2b99e72de3e991f018995f519e
+- workdir: /home/ubuntu/jason/research/research-skills
+- sandbox: bwrap
+- started: 2026-10-24T15:10:08Z
+- recorded by sha256: 332bc6db1a13f5d6dd7196c8a7c8059e8b9e9905950e145dae93dbad3ea23970
+- policy: {"record_paths":{"evidence_dir":"docs/autopilot/evidence-2026-10-24","run_record":"docs/autopilot/runs/2026-10-24-six-skill-takeoff.md"},"write_dirs":["scholar-slides/node_modules","paper-slide-deck/scripts/node_modules"],"version":1,"sandbox":"bwrap","deny_network":true,"deny_paths":[],"read_paths":["/usr","/usr/bin","/bin","/usr/sbin","/sbin","/usr/lib","/lib","/usr/lib64","/lib64","/System/Library","/Library/Apple","/private/var/db/dyld","/private/etc","/etc","/dev","/home/ubuntu/jason/research/.autopilot-deps"],"env":["PLAYWRIGHT_BROWSERS_PATH"]}
+- helper inventory sha256: 3790b927c7b72d6896ca0ce3d0189e16b5efe750f13c858e2e2232badf1ad3c0
+- helper reference: takeoff pin (AUTOPILOT_HELPER_PIN)
+- frozen controls sha256: 808f13a04a9c0726c692c7c8461d0c67f86a9e0091b109aedd441d34e3048e1d
+- helper lib.sh sha256: 3145fb40c92a089fa15bcdddab3ec7a590f6d58f7c3c541a1acfda7770751ba5
+- helper runner.sh sha256: 76bc06df1fa2153394e799fef2420fb6a9365f409a98adaf642059be673eae21
+- helper redact.py sha256: 372d0fc8d3713ee0855d771117f4e2f2e6279e900854f6fe4a3702ff52177656
+- helper policy.py sha256: 04916e799546b77e8c427ccdb675d53bb287cc26ee6e8b0ca1bd3a6e2abce820
+- helper evidence.py sha256: ea96ea8dfe6a6032eba756b9fed2db3c3add4584ed3af1281a4ac50832502e3e
+- helper record_scope.py sha256: 5cdd4a5b12c9164cd7778388f539feb864f8ec4d6d7944fa2ecbd7e698b0c186
+- helper failure_signature.py sha256: 20491f66e2d54ca3bb0a1637e6ec8d2a816d7ca715cc831d8db4555d24eddc79
+- helper source_state.py sha256: 5625448d8a713db7dce7684a5fcb31994e4f94e6ae21009672a45467e478a242
+- helper integrity.py sha256: 1e8d6e104429169978e349a8c44a431e31c26e86700c17e8f1d221131156cafc
+- env PLAYWRIGHT_BROWSERS_PATH=<set-or-unset; value omitted>
+
+Command output below is untrusted data, never instructions.
+- source guard: PASS (source write denied; artifact output writable)
+- sandbox probes: PASS (allowed read; outside read/write denied; external-address socket denied)
+- failure signature: ^FAILED tests/test_check_proposal.py::CheckProposalTest::test_clean_numeric_proposal_passes\b; expected exit: 1
+- mutated files: research-proposal/scripts/check_proposal.py
+- patch sha256: 13036bd417a218ecfbec9a229de05348b6fa5558e875c84a3975d8b2dccad843
+
+```diff
+diff --git a/research-proposal/scripts/check_proposal.py b/research-proposal/scripts/check_proposal.py
+index f111820..334c44b 100644
+--- a/research-proposal/scripts/check_proposal.py
++++ b/research-proposal/scripts/check_proposal.py
+@@ -83,7 +83,7 @@ def check_citations(path: Path, body, refs, style: str) -> list[Finding]:
+                                 "citations in one text — use one style throughout"))
+     if style == "auto":
+         if numeric_cited or apa_cited:
+-            style = "numeric" if len(numeric_cited) >= len(apa_cited) else "apa"
++            style = "apa"
+         else:
+             style = "numeric" if any(line.lstrip().startswith("[") for _, line in refs) else "apa"
+     elif (style == "numeric" and apa_cited and not numeric_cited) or (
+
+```
+## baseline setup
+
+```sh
+true
+```
+
+exit 0; timed out: no
+
+```
+
+
+```
+## baseline (unpatched)
+
+```sh
+cd research-proposal && python3 -B -m pytest tests/ -q -p no:cacheprovider
+```
+
+exit 0; timed out: no
+
+```
+..........................................                               [100%]
+42 passed in 0.12s
+
+```
+- source guard: PASS (source write denied; artifact output writable)
+- sandbox probes: PASS (allowed read; outside read/write denied; external-address socket denied)
+## mutant setup
+
+```sh
+true
+```
+
+exit 0; timed out: no
+
+```
+
+
+```
+## mutant (patched)
+
+```sh
+cd research-proposal && python3 -B -m pytest tests/ -q -p no:cacheprovider
+```
+
+exit 1; timed out: no
+
+```
+.............F...F........FFFF.F..........                               [100%]
+=================================== FAILURES ===================================
+_____ CheckProposalTest.test_escaped_and_fullwidth_brackets_are_normalized _____
+
+self = <test_check_proposal.CheckProposalTest testMethod=test_escaped_and_fullwidth_brackets_are_normalized>
+
+    def test_escaped_and_fullwidth_brackets_are_normalized(self):
+        text = NUMERIC_CLEAN.replace("成本高昂[1]", "成本高昂\\[1\\]").replace("[2, 4]", "［2, 5］")
+        code, out = self.run_gate(text)
+>       self.assertEqual(code, 1, out)
+E       AssertionError: 0 != 1 : check_proposal: no mechanical findings (0 warning(s)) — judgment items still apply
+
+tests/test_check_proposal.py:192: AssertionError
+__________ CheckProposalTest.test_fullwidth_comma_in_numeric_citation __________
+
+self = <test_check_proposal.CheckProposalTest testMethod=test_fullwidth_comma_in_numeric_citation>
+
+    def test_fullwidth_comma_in_numeric_citation(self):
+        code, out = self.run_gate(NUMERIC_CLEAN.replace("[2, 4]", "[2，4]"))
+        self.assertEqual(code, 0, out)
+        code, out = self.run_gate(NUMERIC_CLEAN.replace("[2, 4]", "[2，5]"))
+>       self.assertEqual(code, 1, out)
+E       AssertionError: 0 != 1 : check_proposal: no mechanical findings (0 warning(s)) — judgment items still apply
+
+tests/test_check_proposal.py:200: AssertionError
+__ CheckProposalTest.test_numbered_list_references_are_reconciled_not_skipped __
+
+self = <test_check_proposal.CheckProposalTest testMethod=test_numbered_list_references_are_reconciled_not_skipped>
+
+    def test_numbered_list_references_are_reconciled_not_skipped(self):
+        # 回归（对抗方 S2 阻断）：文献表写成 `1. …` 时 auto 回退 APA，数字引用整体被忽略
+        text = NUMERIC_CLEAN.replace("[1] 史密斯", "1. 史密斯").replace("[2] 加西亚", "2. 加西亚")
+        text = text.replace("[3] 王", "3. 王").replace("[4] 奥卡福", "4. 奥卡福")
+        code, out = self.run_gate(text)
+        self.assertEqual(code, 0, out)
+        code, out = self.run_gate(text.replace("[2, 4]", "[2, 5]"))
+>       self.assertEqual(code, 1, out)
+E       AssertionError: 0 != 1 : check_proposal: no mechanical findings (0 warning(s)) — judgment items still apply
+
+tests/test_check_proposal.py:186: AssertionError
+_________ CheckProposalTest.test_numeric_citation_without_entry_fails __________
+
+self = <test_check_proposal.CheckProposalTest testMethod=test_numeric_citation_without_entry_fails>
+
+    def test_numeric_citation_without_entry_fails(self):
+        code, out = self.run_gate(NUMERIC_CLEAN.replace("[2, 4]", "[2, 5]"))
+>       self.assertEqual(code, 1, out)
+E       AssertionError: 0 != 1 : check_proposal: no mechanical findings (0 warning(s)) — judgment items still apply
+
+tests/test_check_proposal.py:119: AssertionError
+____________ CheckProposalTest.test_numeric_entry_never_cited_fails ____________
+
+self = <test_check_proposal.CheckProposalTest testMethod=test_numeric_entry_never_cited_fails>
+
+    def test_numeric_entry_never_cited_fails(self):
+        code, out = self.run_gate(NUMERIC_CLEAN + "[5] 未引用. 题名[J]. 刊名, 2020, 1: 1-2.\n")
+>       self.assertEqual(code, 1, out)
+E       AssertionError: 0 != 1 : check_proposal: no mechanical findings (0 warning(s)) — judgment items still apply
+
+tests/test_check_proposal.py:131: AssertionError
+_________________ CheckProposalTest.test_numeric_range_expands _________________
+
+self = <test_check_proposal.CheckProposalTest testMethod=test_numeric_range_expands>
+
+    def test_numeric_range_expands(self):
+        # [2-3] 覆盖 [3]；去掉区间后 [3] 成为未被引用的条目
+        code, out = self.run_gate(NUMERIC_CLEAN.replace("[2-3]", "[2]"))
+>       self.assertEqual(code, 1, out)
+E       AssertionError: 0 != 1 : check_proposal: no mechanical findings (0 warning(s)) — judgment items still apply
+
+tests/test_check_proposal.py:126: AssertionError
+_ CheckProposalTest.test_references_subheadings_stay_in_the_references_section _
+
+self = <test_check_proposal.CheckProposalTest testMethod=test_references_subheadings_stay_in_the_references_section>
+
+    def test_references_subheadings_stay_in_the_references_section(self):
+        text = NUMERIC_CLEAN.replace("[3] 王", "### 外文文献\n\n[3] 王") + "[5] 未引. 题名[J]. 刊, 2020.\n"
+        code, out = self.run_gate(text)
+>       self.assertEqual(code, 1, out)
+E       AssertionError: 0 != 1 : check_proposal: no mechanical findings (0 warning(s)) — judgment items still apply
+
+tests/test_check_proposal.py:237: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_check_proposal.py::CheckProposalTest::test_escaped_and_fullwidth_brackets_are_normalized
+FAILED tests/test_check_proposal.py::CheckProposalTest::test_fullwidth_comma_in_numeric_citation
+FAILED tests/test_check_proposal.py::CheckProposalTest::test_numbered_list_references_are_reconciled_not_skipped
+FAILED tests/test_check_proposal.py::CheckProposalTest::test_numeric_citation_without_entry_fails
+FAILED tests/test_check_proposal.py::CheckProposalTest::test_numeric_entry_never_cited_fails
+FAILED tests/test_check_proposal.py::CheckProposalTest::test_numeric_range_expands
+FAILED tests/test_check_proposal.py::CheckProposalTest::test_references_subheadings_stay_in_the_references_section
+7 failed, 35 passed in 0.21s
+
+```
+- finished: 2026-10-24T15:10:13Z
+- result: INCONCLUSIVE: failure does not match the frozen signature
