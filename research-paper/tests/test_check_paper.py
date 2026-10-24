@@ -154,6 +154,22 @@ class CheckPaperTest(unittest.TestCase):
         self.assertEqual(code, 1, out)
         self.assertIn("'0.912'", out)
 
+    def test_fullwidth_percent_and_equals_are_checked(self):
+        # landing review r2：中文输入法打出的 `96％`、`n＝120` 曾整个漏检
+        for text, shown in (("准确率为96％", "96％"), ("样本量n＝120", "n＝120")):
+            with self.subTest(text=text):
+                self.write(draft=CLEAN_DRAFT.replace("## References", f"{text}。\n\n## References"))
+                code, out = self.run_gate()
+                self.assertEqual(code, 1, out)
+                self.assertIn(f"'{shown}'", out)
+
+    def test_leading_dot_in_the_ledger_matches_the_draft(self):
+        ledger = LEDGER.rstrip("\n") + "\nC9,results,corr,.85,,p < .001,a.csv,row 9,verified\n"
+        draft = CLEAN_DRAFT.replace("## References", "Agreement r = .85 (p < .001).\n\n## References")
+        self.write(draft=draft, ledger=ledger)
+        code, out = self.run_gate()
+        self.assertEqual(code, 0, out)
+
     def test_bracketed_confidence_interval_is_checked(self):
         # 回归（对抗方 S1-2）：只有 [PENDING…] 与引文可豁免，方括号里的置信区间要对账
         self.write(draft=CLEAN_DRAFT.replace("(95% CI 0.82-0.87)", "[95% CI 0.71, 0.80]"))
