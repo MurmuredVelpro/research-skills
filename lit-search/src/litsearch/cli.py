@@ -906,7 +906,7 @@ def screen_command(
         help="试跑取样：head = 语料前 N 条；random = 按 --seed 无放回随机抽 N 条（校准用这个）",
     ),
     seed: int = typer.Option(
-        0, "--seed", help="--sample random 的随机种子（记进 screening_trial.json）"
+        None, "--seed", help="--sample random 的随机种子，默认 0（记进 screening_trial.json）"
     ),
     concurrency: int = typer.Option(None, "--concurrency", min=1, help="并发请求数"),
     host_model: str = typer.Option(
@@ -951,6 +951,12 @@ def screen_command(
     records = [CanonicalRecord.model_validate(row) for row in run_dir.read_jsonl("corpus.jsonl")]
     records = [item for item in records if item.window_status == WindowStatus.IN_WINDOW]
     try:
+        if resume and sample == "random":
+            # 续跑补的是上一轮缺的判定；试跑样本换了种子就是另一批记录，混进去无从解释
+            raise SampleError("--resume 不能与 --sample random 同用：要换样本就重新试跑")
+        if seed is not None and sample != "random":
+            raise SampleError("--seed 只对 --sample random 生效")
+        seed = 0 if seed is None else seed
         records = select_trial(records, limit, sample, seed)
     except SampleError as error:
         typer.secho(str(error), fg=typer.colors.RED, err=True)

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 
+import httpx
 import pytest
 from typer.testing import CliRunner
 
@@ -16,7 +17,14 @@ from litsearch.dedupe import CanonicalRecord
 from litsearch.normalize import WindowStatus
 from litsearch.sampling import SampleError, sample_parameters, select_trial
 
-from .test_cli import _FakeClient, runs_root, seeded_run, topic_path  # noqa: F401
+from .test_cli import (  # noqa: F401
+    JEV_URL,
+    _FakeClient,
+    _jev_reply,
+    runs_root,
+    seeded_run,
+    topic_path,
+)
 
 runner = CliRunner()
 CORPUS = list(range(50))
@@ -98,6 +106,27 @@ class TestScreenSampleCli:
         assert list(trial["decisions"]) == [keys[1]]
         assert trial["parameters"]["sample"] == {"method": "random", "size": 1, "seed": 5}
 
+    def test_the_given_seed_reaches_the_selection(
+        self, seeded_run, topic_path, runs_root, fake_llm  # noqa: F811
+    ):
+        # 种子 0（默认）抽中第 2 条；种子 1 抽中第 1 条——总用默认种子的实现在这里露馅
+        keys = self._in_window_keys(seeded_run)
+        args = ("--limit", "1", "--sample", "random", "--seed", "1")
+        result = runner.invoke(app, self._cmd(topic_path, runs_root, *args))
+        assert result.exit_code == 0, result.output
+        trial = json.loads((seeded_run.root / "screening_trial.json").read_text())
+        assert list(trial["decisions"]) == [keys[0]]
+        assert trial["parameters"]["sample"]["seed"] == 1
+
+    def test_seed_without_random_and_resume_with_random_are_refused(
+        self, seeded_run, topic_path, runs_root, fake_llm  # noqa: F811
+    ):
+        for extra in (("--limit", "1", "--seed", "3"),
+                      ("--limit", "1", "--sample", "random", "--resume")):
+            result = runner.invoke(app, self._cmd(topic_path, runs_root, *extra))
+            assert result.exit_code == 2, (extra, result.output)
+        assert not (seeded_run.root / "screening_trial.json").exists()
+
     def test_head_trial_keeps_the_prefix(
         self, seeded_run, topic_path, runs_root, fake_llm  # noqa: F811
     ):
@@ -116,3 +145,30 @@ class TestScreenSampleCli:
         assert "--limit" in result.output
         assert not (seeded_run.root / "screening_trial.json").exists()
         assert not list(seeded_run.root.glob("screening_round_*.json"))
+
+
+class TestScreenSampleJev:
+    """判定 API 后端走另一条提交路径（cli_judge.run_jev_screening），抽样说明同样要落盘。"""
+
+    @pytest.fixture
+    def profile_path(self, tmp_path):
+        path = tmp_path / "t.jev.yaml"
+        path.write_text("topic_id: t\n", encoding="utf-8")
+        return path
+
+    def test_jev_random_trial_records_the_sample(
+        self, seeded_run, topic_path, runs_root, profile_path, respx_mock, monkeypatch  # noqa: F811
+    ):
+        monkeypatch.setenv("TYPESAFE_API_KEY", "k-test")
+        respx_mock.post(JEV_URL).mock(
+            return_value=httpx.Response(200, json=_jev_reply({"I1": 0.95, "X1": 0.02}))
+        )
+        result = runner.invoke(app, [
+            "screen", "t", "--topic", str(topic_path), "--runs-root", str(runs_root),
+            "--model", "jev", "--jev-profile", str(profile_path),
+            "--limit", "1", "--sample", "random", "--seed", "1",
+        ])
+        assert result.exit_code == 0, result.output
+        trial = json.loads((seeded_run.root / "screening_trial.json").read_text())
+        assert trial["parameters"]["judge"] == "jev"
+        assert trial["parameters"]["sample"] == {"method": "random", "size": 1, "seed": 1}
