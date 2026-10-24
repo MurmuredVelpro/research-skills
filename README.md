@@ -168,7 +168,7 @@ Generate high-quality academic research proposals — PhD applications, research
 
 ### Output
 
-- Target: 2,000-4,000 words (default ~3,000)
+- Target: 2,000-4,000 words (default ~3,000) for a PhD proposal; 开题报告 follows the institution's required length (常见 10,000–30,000 字)
 - References: count follows the argument (typically 25–50; no minimum, no padding), each verified
 - 3-5 figure suggestions
 - Markdown format (convertible to DOCX/PDF via pandoc)

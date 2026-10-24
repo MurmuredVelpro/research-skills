@@ -74,7 +74,7 @@ Use `AskUserQuestion` to collect:
 - **Scenario** — PhD proposal / 开题报告 / research plan / grant (routes structure, see above).
 - **Academic domain** — STEM (and whether computational/ML — see [references/DOMAIN_TEMPLATES.md](references/DOMAIN_TEMPLATES.md)), Humanities, or Social Sciences.
 - **Output language** — English or 中文.
-- **Target word count** — default ~3,000 words; range 2,000–4,000 (humanities may extend to ~10,000).
+- **Target length** — PhD proposal / research plan: default ~3,000 words, range 2,000–4,000 (humanities may extend to ~10,000). **开题报告 is set by the institution, not by this default** — ask for the school's template and required length (常见 10,000–30,000 字，文献综述部分往往占一半); Chinese length counts characters (`wc -m`), not whitespace words. If the user has no requirement, default 中文开题报告 to ~15,000 字 and state it as a locked assumption.
 - **Optional** — target institution/supervisor; existing materials or a Zotero library to draw on.
 
 If the topic is too vague to scope a methodology, ask focused clarifying questions before proceeding. **Headless run** (no interactive user, e.g. called from another agent's pipeline): extract the requirements above from the calling prompt instead of asking, and record them as **locked assumptions** in the outline the way Phase 3 does — never invent a requirement the prompt did not state.
@@ -165,7 +165,16 @@ Read [references/WRITING_STYLE_GUIDE.md](references/WRITING_STYLE_GUIDE.md) and 
 
 Save as `proposal_{topic_slug}_{YYYY-MM-DD}.md` in the user's working directory.
 
-Verify against [references/QUALITY_CHECKLIST.md](references/QUALITY_CHECKLIST.md). Before delivering, the **citation gate** must pass:
+Verify against [references/QUALITY_CHECKLIST.md](references/QUALITY_CHECKLIST.md). Before delivering, the **citation gate** must pass. Run the executable gate first and paste its output — it performs every mechanical check below in one pass and names each offending line:
+
+```bash
+python3 <skill_dir>/scripts/check_proposal.py proposal_{topic_slug}_{YYYY-MM-DD}.md
+# --style auto|apa|numeric (auto: numeric when References entries start with [N])
+# --allow-disclosed-flags : every remaining [UNVERIFIED…] has been disclosed → warnings, not failures
+# exit 0 = no mechanical findings (not proof the proposal is right); 1 = findings; 2 = bad input
+```
+
+It reconciles in-text citations ↔ References both directions (APA `(Smith, 2024)` / `Smith et al. (2024)` keyed by first-author surname + year; GB/T 7714 `[1]` / `[2-4]` ↔ `[N]` entries), runs the placeholder and AI-tell patterns below (same regex, locked by tests), and flags leftover scaffold `[instructions]` while allowing the exempt personalization fields. The bullets below define what each check means and remain the manual fallback:
 
 - `grep -nE "xxx|XXXX|\[TBD\]|\[UNVERIFIED[^]]*\]|10\.xxxx|doi:10\.[a-z]+/x|forthcoming DOI|\[.*占位.*\]"` returns 0 hits — or every remaining `[UNVERIFIED]` has been explicitly disclosed to the user and never presented as confirmed. (This regex is the single canonical version; [references/CITATION_INTEGRITY.md](references/CITATION_INTEGRITY.md) links to it rather than restating a variant.)
 - Every in-text citation reconciles with the References list (no orphans either direction).
