@@ -1,6 +1,6 @@
 # 六个 skill 升级改造起飞（第四轮）
 
-- status: flying
+- status: landed
 - workspace: autopilot/six-skill-takeoff
 - base: 98b1ffea0f093462c88ed7c30d6bb2293cfc6e7c <!-- policy import commit -->
 - cut from: 3b2e391eaf1190ccc01d43fa1a1d6df08b3ad010 <!-- main -->
@@ -10,7 +10,7 @@
 - host: strict (bwrap usable; `host-doctor.sh` at 98b1ffe)
 - policy: docs/autopilot-policy.json at the pinned commit
 - helper pin: 3790b927c7b72d6896ca0ce3d0189e16b5efe750f13c858e2e2232badf1ad3c0
-- current: landing audit (final snapshot)
+- current: landed — parked P1, P2
 
 ## Goal
 
@@ -79,8 +79,14 @@ Current wave: every mutant rerun under a `-land2` label at 1811dc6, after the la
 9c83160, 120 KILLED) stay in the evidence directory as history and are superseded by the rows below.
 132 rows KILLED; `c2-key-case-land2` was INCONCLUSIVE (killed by tests other than the guessed signature) and
 its `-land2-r2` rerun names the test that failed — chosen after seeing the first run, disclosed. KILLED
-adversary/auditor-selected rows per criterion: C1 17, C2 19, C3 5, C4 13, C5 19, C6 20, C7 17. Landing
-r2's C4 target is the same mutation as stage target `c4-unseeded` (one row).
+adversary/auditor-selected rows per criterion: C1 18, C2 20, C3 5, C4 13, C5 20, C6 20, C7 17 (corrected by
+audit r3; the earlier figures C1 17, C2 19, C5 19 were miscounted). Landing r2's C4 target is the same mutation as
+stage target `c4-unseeded` (one row). Likewise `c5-no-future-work-land2` and `c5-future-work-vocab-land2` are
+the same mutation (patch `b57d17f69865…`), selected twice; both rows are kept and count as one distinct target.
+Six node mutant files (`c5-backup-severity`, `c5-jc-guard`, `c5-limits-guard`, `c6-allow-ignored`,
+`c6-mark-sha`, `c6-no-entry-ok`, `-land2`) are KILLED by footer but their saved output is truncated before
+the signature line; audit r3 reran all six from the committed patches with the signature matched
+(`audit-mutant-reruns-r3.md`).
 
 | criterion | selected by | source condition / failure | patch | baseline | result / evidence |
 |---|---|---|---|---|---|
@@ -297,9 +303,9 @@ Append only. The human rules on each at landing.
 | R29 | audit-r1 | claude subagent (auditor) | gate commands and reviewer differ from the contract (offline translations; Claude instead of Codex) | minor-open | disclosed since takeoff; needs the human's ruling — parked P2 |
 | R30 | audit-r1 | claude subagent (auditor) | some stage-review adversary targets (s1 #2–#4, s4 #3, s5 #15 pptx half, s6 #3, s6 #5) had no recorded mutant | minor-fixed | added as 10 `-land2` mutants (`added after landing audit`), all KILLED |
 | R31 | audit-r1 | claude subagent (auditor) | table rows for c7-rejection-rollback / c7-audit-accepts misdescribed what they attack | minor-fixed | table now lists every hunk and states what c7-rejection-rollback attacks |
-| R32 | landing-r2 | claude subagent | C1(a): full-width `％` and `＝` (Chinese IME) never matched — `96％`, `n＝120` untraced | fixed-unreviewed | reproduced (finditer → []); fixed 0a4dd4e in both cores; test `test_fullwidth_percent_and_equals_are_checked`; mutants c1-fullwidth-percent-land2, c1-fullwidth-equals-land2. Blocking; last review round, so not re-reviewed |
-| R33 | landing-r2 | claude subagent | ledger side read `.85` as `85` (false number-not-in-ledger) | fixed-unreviewed | reproduced; 0a4dd4e NUMBER_RE `\d*\.\d+`; test `test_leading_dot_in_the_ledger_matches_the_draft`; mutant c1-ledger-leading-dot-land2 |
-| R34 | landing-r2 | claude subagent | targets: C7 dangling symlink at the export path had no test (`is_symlink` guard droppable) | fixed-unreviewed | 19f6385 + 1811dc6 (cleanup of the dangling link) `test_dangling_symlink_at_the_export_path_is_refused`; all 9 distinct r2 targets KILLED in `-land2` |
+| R32 | landing-r2 | claude subagent | C1(a): full-width `％` and `＝` (Chinese IME) never matched — `96％`, `n＝120` untraced | fixed-unreviewed | reproduced (finditer → []); fixed 0a4dd4e in both cores; test `test_fullwidth_percent_and_equals_are_checked`; mutants c1-fullwidth-percent-land2, c1-fullwidth-equals-land2. Severity: blocking; last review round, so not re-reviewed; listed in P1's needs |
+| R33 | landing-r2 | claude subagent | ledger side read `.85` as `85` (false number-not-in-ledger) | fixed-unreviewed | reproduced; 0a4dd4e NUMBER_RE `\d*\.\d+`; test `test_leading_dot_in_the_ledger_matches_the_draft`; mutant c1-ledger-leading-dot-land2. Severity: minor (as rated by landing-r2) |
+| R34 | landing-r2 | claude subagent | targets: C7 dangling symlink at the export path had no test (`is_symlink` guard droppable) | fixed-unreviewed | 19f6385 + 1811dc6 (cleanup of the dangling link) `test_dangling_symlink_at_the_export_path_is_refused`; all 9 distinct r2 targets KILLED in `-land2`. Severity: minor (a mutation target, not a rated defect) |
 | R35 | audit-r2 | claude subagent (auditor) | five stage findings files fail their sealed receipts (trailing newline added after sealing) | minor-open | confirmed; disclosed under Evidence integrity — evidence is not rewritten |
 | R36 | audit-r2 | claude subagent (auditor) | naming sub-clauses (C1 names the item, C2 names the orphan, C5 names the allowed values) had no recorded mutant | minor-fixed | `mutant-c1-names-item-land2`, `mutant-c2-names-orphan-land2`, `mutant-c5-names-allowed-land2` KILLED |
 | R37 | audit-r2 | claude subagent (auditor) | evidence location/naming and the `codex --version` / auditor-brief preflight rows differ from the contract, undisclosed | minor-open | added to the proposed contract changes (3, 4) and P2 |
@@ -309,7 +315,7 @@ Append only. The human rules on each at landing.
 | id | needs | exact action | unblocks | verify afterward |
 |---|---|---|---|---|
 | P2 | human ruling on the proposed contract changes 1–4 (offline gate commands, fallback reviewer, evidence layout, preflight rows) | approve or reject the two amendments below; the run never edits `docs/autopilot.md` | gate evidence counts as the contract's own commands | none — contract text only |
-| P1 | human decision (landing not pre-authorized by the contract) | review branch `autopilot/six-skill-takeoff`, then merge to `main` and/or push / open a PR | the upgrades reach `main` / origin | rerun the 10 gate commands on `main` after merge |
+| P1 | human decision (landing not pre-authorized by the contract); acceptance of blocking `fixed-unreviewed` R32 (or a re-review of 0a4dd4e) before any merge | review branch `autopilot/six-skill-takeoff`, then merge to `main` and/or push / open a PR | the upgrades reach `main` / origin | rerun the 10 gate commands on `main` after merge |
 
 ### Proposed contract changes
 
@@ -356,6 +362,21 @@ Append only. The human rules on each at landing.
 | C7 | copy present delivery files; refuse existing dir / missing-unparseable total with nothing written; one row with PRISMA count, paths to copies, accepted by the audit | `test_import_litsearch.py`; mutants c7-* (header check repaired) | proven |
 
 All seven criteria are proven at 1811dc6 with current mutation evidence (`-land2` wave) and gate-landing-r3; no erratum was needed.
+
+## Landing audit disposition
+
+Final independent audit (round 3) of snapshot b00e709 — fresh-context Claude subagent, same family
+(`audit-landing-r3.md`; its own offline gate rerun `audit-gate-r3.md`, identical counts; mutant reruns
+`audit-mutant-reruns-r3.md`). Verdict: C1–C7 carried; no blocking findings; 390 evidence files verify; no
+code change between 1811dc6 and the head; main/origin untouched at 3b2e391. Four minor record findings, all
+fixed in this record commit:
+
+| id | finding | disposition |
+|---|---|---|
+| A3-1 | blocking fixed-unreviewed R32 not tied to the merge decision | added to P1's needs |
+| A3-2 | R33/R34 lacked a severity | severities stated in the ledger |
+| A3-3 | per-criterion counts C1/C2/C5 off by one; duplicate C5 mutation undisclosed | counts corrected; duplicate disclosed |
+| A3-4 | six node mutant files truncated before the signature line | disclosed; auditor reran all six, signature matched |
 
 ## Resume log
 
