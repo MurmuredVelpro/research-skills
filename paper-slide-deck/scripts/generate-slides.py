@@ -33,6 +33,8 @@ Example:
     python3 generate-slides.py ./slide-deck/my-presentation --model gemini-3-pro-image
 """
 
+import hashlib
+import json
 import os
 import re
 import sys
@@ -196,6 +198,34 @@ def generate_slide(client, types, model: str, prompt: str, output_base: Path,
     return None
 
 
+GENERATED_LEDGER = "generated.json"
+
+
+def record_generated(deck_dir: Path, output_path: Path, prompt_file: Path, model: str) -> None:
+    """Record a freshly generated slide in generated.json (filename -> sha256, prompt, model).
+
+    The merge scripts refuse any recorded slide without a matching proofread.json
+    disposition (SKILL.md Step 6.5) — text-to-image garbles math and numbers, so an
+    unchecked generated slide must not ship silently. A regenerated slide gets a new
+    sha256, which voids its earlier proofread entry.
+    """
+    ledger = deck_dir / GENERATED_LEDGER
+    slides = {}
+    if ledger.exists():
+        slides = json.loads(ledger.read_text(encoding="utf-8")).get("slides", {})
+    # A slide re-generated under another extension replaces its old record.
+    stem = output_path.stem
+    slides = {name: entry for name, entry in slides.items() if Path(name).stem != stem}
+    slides[output_path.name] = {
+        "sha256": hashlib.sha256(output_path.read_bytes()).hexdigest(),
+        "prompt": f"prompts/{prompt_file.name}",
+        "model": model,
+    }
+    tmp = ledger.with_name(ledger.name + ".tmp")
+    tmp.write_text(json.dumps({"slides": slides}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    tmp.replace(ledger)
+
+
 def find_slides_to_generate(prompt_files: list, output_dir: Path) -> list:
     """Find slides that need generation (prompts without a valid output)."""
     slides = []
@@ -215,6 +245,25 @@ def find_slides_to_generate(prompt_files: list, output_dir: Path) -> list:
         })
 
     return slides
+
+
+def unrecorded_existing(prompt_files: list, output_dir: Path) -> list:
+    """Existing slide images for these prompts that generated.json does not list.
+
+    They are skipped (idempotence) but not recorded: they may be extracted figures, or
+    AI images from an older run / the Gemini Web path. Only the agent knows which, so the
+    run names them instead of guessing.
+    """
+    ledger = output_dir / GENERATED_LEDGER
+    recorded = set()
+    if ledger.exists():
+        recorded = set(json.loads(ledger.read_text(encoding="utf-8")).get("slides", {}))
+    names = []
+    for prompt_file in prompt_files:
+        found = existing_output(output_dir / prompt_file.stem)
+        if found and found.name not in recorded:
+            names.append(found.name)
+    return names
 
 
 def list_existing_slides(output_dir: Path) -> list:
@@ -263,6 +312,12 @@ def main():
 
     # Find slides to generate
     slides = find_slides_to_generate(prompt_files, output_dir)
+    unrecorded = unrecorded_existing(prompt_files, output_dir)
+    if unrecorded:
+        print(f"\nNote: {len(unrecorded)} existing slide(s) are skipped but not in {GENERATED_LEDGER}: "
+              + ", ".join(unrecorded))
+        print("If any of them is AI-generated (older run, Gemini Web), record it so the merge gate "
+              "requires a proofread:\n  bun scripts/proofread.ts --record <deck-dir> <slide-file>")
 
     if not slides:
         print("\nAll slides already generated. Nothing to do.")
@@ -295,12 +350,17 @@ def main():
         prompt = slide["prompt_file"].read_text(encoding="utf-8")
 
         # Generate slide
-        if generate_slide(client, types, args.model, prompt, slide["output_base"]):
+        written = generate_slide(client, types, args.model, prompt, slide["output_base"])
+        if written:
+            record_generated(deck_dir, written, slide["prompt_file"], args.model)
             success_count += 1
         else:
             failed_slides.append(slide["name"])
 
     print(f"\nDone! Generated {success_count}/{len(slides)} slides.")
+    if success_count:
+        print("Proofread every generated slide before merging (SKILL.md Step 6.5):\n"
+              "  bun scripts/proofread.ts --mark <deck-dir> <slide-file> ok|check [--note \"…\"]")
 
     if failed_slides:
         print(f"\nFailed slides ({len(failed_slides)}):")

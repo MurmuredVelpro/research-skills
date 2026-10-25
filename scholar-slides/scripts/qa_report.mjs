@@ -4,7 +4,7 @@
 // It does NOT certify truth (only a human can) — it surfaces every defect and every flag.
 import fs from "node:fs";
 import path from "node:path";
-import { groundNumbers, collectFlags, layoutMix, emphasisAudit, figureCrowding, emojiAudit } from "./lib/qa.mjs";
+import { groundNumbers, collectFlags, layoutMix, emphasisAudit, figureCrowding, emojiAudit, deckTypeAudit } from "./lib/qa.mjs";
 import { buildFigMeta } from "./lib/render_checks.mjs";
 import { timingReport } from "./lib/notes.mjs";
 import { validateDeck } from "./validate_deck.mjs";
@@ -36,12 +36,9 @@ export function renderReviewFindings(deckDir) {
   return [];
 }
 
-export async function qaReport(deckDir, sourceDir) {
-  sourceDir = sourceDir || path.resolve(deckDir, "..");
-  const deck = JSON.parse(fs.readFileSync(path.join(sourceDir, "deck.json"), "utf-8"));
-  const ingestPath = path.join(sourceDir, "ingest.json");
-  const sourceText = fs.existsSync(ingestPath) ? JSON.parse(fs.readFileSync(ingestPath, "utf-8")).full_text || "" : "";
-
+// Findings that need only deck.json (+ source text): integrity, deck type, notes, aesthetics nudges.
+// Split out so they are testable without a browser; qaReport adds validate/render/review stages.
+export function specFindings(deck, sourceText = "") {
   const findings = [];
   if (sourceText) {
     for (const g of groundNumbers(deck, sourceText)) {
@@ -55,6 +52,8 @@ export async function qaReport(deckDir, sourceDir) {
     findings.push({ stage: "integrity", check: "flag", severity: "P1", slide: fl.slide,
       detail: `${fl.flag} (${fl.field}) — must be acknowledged at CKPT-3` });
   }
+  // Deck-type archetypes: what this kind of talk owes its audience (references/deck-types.md).
+  for (const d of deckTypeAudit(deck)) findings.push({ stage: "deck-type", ...d });
   const timing = timingReport(deck);
   if (timing.withoutNotes.length) {
     findings.push({ stage: "notes", check: "missing-speaker-notes", severity: "P3",
@@ -88,6 +87,18 @@ export async function qaReport(deckDir, sourceDir) {
     findings.push({ stage: "aesthetics", check: "over-highlighted", severity: "P3",
       detail: `slide(s) ${emph.over.join(", ")} use >${emph.maxAdded} added emphasis treatments — reads as over-marked; keep metric/positive/warn to <=2 per slide (key/accent is free)` });
   }
+  findings._timing = timing;
+  return findings;
+}
+
+export async function qaReport(deckDir, sourceDir) {
+  sourceDir = sourceDir || path.resolve(deckDir, "..");
+  const deck = JSON.parse(fs.readFileSync(path.join(sourceDir, "deck.json"), "utf-8"));
+  const ingestPath = path.join(sourceDir, "ingest.json");
+  const sourceText = fs.existsSync(ingestPath) ? JSON.parse(fs.readFileSync(ingestPath, "utf-8")).full_text || "" : "";
+
+  const findings = specFindings(deck, sourceText);
+  const timing = findings._timing;
   for (const v of validateDeck(deckDir)) findings.push({ stage: "validate", ...v });
   // Exact figure-legibility projection needs the crop metadata detect_figures emitted.
   const figuresPath = path.join(sourceDir, "figures.json");

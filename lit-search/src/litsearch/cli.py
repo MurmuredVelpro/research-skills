@@ -97,6 +97,7 @@ from litsearch.run import (
     resolve_run,
     unrun_sources,
 )
+from litsearch.sampling import SampleError, sample_parameters, select_trial
 from litsearch.screen import (
     Decision,
     ScreeningRound,
@@ -896,7 +897,17 @@ def screen_command(
         help=f"模型名；'{HOST_MODEL}' 用宿主 Claude Code 判定（零配置，不需要 key）",
     ),
     dry_run: bool = typer.Option(False, "--dry-run", help="只估算成本，不发起筛选"),
-    limit: int = typer.Option(None, "--limit", min=1, help="只筛前 N 条（试跑用）"),
+    limit: int = typer.Option(
+        None, "--limit", min=1, help="只筛 N 条（试跑用）；取哪 N 条见 --sample"
+    ),
+    sample: str = typer.Option(
+        "head",
+        "--sample",
+        help="试跑取样：head = 语料前 N 条；random = 按 --seed 无放回随机抽 N 条（校准用这个）",
+    ),
+    seed: int = typer.Option(
+        None, "--seed", help="--sample random 的随机种子，默认 0（记进 screening_trial.json）"
+    ),
     concurrency: int = typer.Option(None, "--concurrency", min=1, help="并发请求数"),
     host_model: str = typer.Option(
         HOST_DEFAULT_MODEL,
@@ -939,11 +950,21 @@ def screen_command(
     run_dir = _open_compatible_run(runs_root, run, loaded, topic)
     records = [CanonicalRecord.model_validate(row) for row in run_dir.read_jsonl("corpus.jsonl")]
     records = [item for item in records if item.window_status == WindowStatus.IN_WINDOW]
-    if limit:
-        records = records[:limit]
+    try:
+        if resume and sample == "random":
+            # 续跑补的是上一轮缺的判定；试跑样本换了种子就是另一批记录，混进去无从解释
+            raise SampleError("--resume 不能与 --sample random 同用：要换样本就重新试跑")
+        if seed is not None and sample != "random":
+            raise SampleError("--seed 只对 --sample random 生效")
+        seed = 0 if seed is None else seed
+        records = select_trial(records, limit, sample, seed)
+    except SampleError as error:
+        typer.secho(str(error), fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2) from error
     if not records:
         typer.secho("窗口内没有记录，先跑 lit harvest", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=2)
+    sampling = sample_parameters(limit, sample, seed, len(records))
 
     by_key = {item.key: item for item in records}
     # 无论是否续跑都要读上一轮：下游只认轮次号最大的那一轮，普通重跑同样会遮蔽它，
@@ -967,6 +988,7 @@ def screen_command(
             concurrency=concurrency,
             allow_regression=allow_regression,
             api_key=(Credentials.from_env().api_keys or {}).get("typesafe"),
+            sampling=sampling,
         )
         return
 
@@ -1145,6 +1167,7 @@ def screen_command(
             "thinking": False if host else not provider.disable_thinking,
             # 只在真的用了才记：让审计时「这一轮是明知退步仍然写的」一眼看得见。
             **({"allow_regression": True} if allow_regression else {}),
+            **sampling,
         },
         prompt_sha256=hashlib.sha256(system_prompts.encode()).hexdigest(),
     )

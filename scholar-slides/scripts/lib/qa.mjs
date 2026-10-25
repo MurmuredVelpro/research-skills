@@ -160,6 +160,56 @@ export function figureCrowding(deck, { maxChars = 240 } = {}) {
   return out;
 }
 
+// ---- deck-type archetypes (references/deck-types.md) ----
+// The deck type changes which content roles a talk owes its audience: a 组会 owes a critique and
+// discussion questions, a 答辩 owes a Backup appendix and an honest limitations/future-work slide,
+// a conference teaser owes neither critique nor survey. Absent meta.deck_type means the default
+// journal club. Returns findings with severity; qa_report wires them in.
+export const DECK_TYPES = ["journal-club", "conference", "defense"];
+// The divider must BE the backup (title starts with the word), not merely mention one.
+const BACKUP_RE = /^\s*(backup|appendix|附录|备用|备份)(?=$|[\s:：\-–—(（]|slides)/i;
+// Own limitations / future work — not a motivation slide about prior work's shortcomings.
+const LIMITS_RE = /\blimitations?\b|\bfuture (work|directions?)\b|局限|展望|未来工作|不足/i;
+const PRIOR_WORK_RE = /\b(existing|prior|previous|related|baselines?|state[- ]of[- ]the[- ]art)\b|现有|已有|传统|以往|前人/i;
+// A closing slide after the Backup divider does not make an appendix.
+const CLOSING_RE = /\b(thank(s| you)?|questions?|q\s*&\s*a)\b|谢谢|致谢|提问/i;
+
+export function deckTypeAudit(deck) {
+  const slides = deck.slides || [];
+  const type = deck.meta?.deck_type ?? "journal-club";
+  if (!DECK_TYPES.includes(type)) {
+    return [{ check: "unknown-deck-type", severity: "P1",
+      detail: `meta.deck_type "${type}" is not one of ${DECK_TYPES.join(", ")} — the deck-type rules cannot be applied` }];
+  }
+  const has = (layout) => slides.some((s) => s.layout === layout);
+  const titleOf = (s) => [s.title, s.action_title].filter(Boolean).join(" ");
+  const out = [];
+  if (type === "journal-club") {
+    for (const layout of ["critique-concerns", "discussion-questions"]) {
+      if (!has(layout)) out.push({ check: "missing-archetype", severity: "P2",
+        detail: `journal-club deck has no ${layout} slide — a 组会 owes the room a critique and discussion (references/deck-types.md)` });
+    }
+  } else if (type === "defense") {
+    const backup = slides.findIndex((s) => s.layout === "section" && BACKUP_RE.test(titleOf(s)));
+    const appendix = backup === -1 ? [] : slides.slice(backup + 1)
+      .filter((s) => s.layout !== "section" && !CLOSING_RE.test(titleOf(s)));
+    if (!appendix.length) {
+      out.push({ check: "missing-backup", severity: "P2",
+        detail: "defense deck has no Backup/Appendix section divider followed by at least one slide — examiners' questions need it" });
+    }
+    if (!slides.some((s) => LIMITS_RE.test(titleOf(s)) && !PRIOR_WORK_RE.test(titleOf(s)))) {
+      out.push({ check: "missing-limitations", severity: "P2",
+        detail: "defense deck has no slide titled for limitations or future work" });
+    }
+  } else if (type === "conference") {
+    slides.forEach((s, i) => {
+      if (s.layout === "critique-concerns") out.push({ check: "critique-in-conference", severity: "P3", slide: i + 1,
+        detail: "a conference talk presents its own work — drop the critique slide or move it to backup" });
+    });
+  }
+  return out;
+}
+
 // ---- placeholder leakage (a Consistency "kill" in the aesthetics rubric) ----
 // An unfilled template token like "<presenter>, <date>" shipping on a cover reads as a broken
 // deck. The vocabulary is curated (not a generic <...> match) so real NLP tokens that belong in

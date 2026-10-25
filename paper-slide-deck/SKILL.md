@@ -5,7 +5,7 @@ description: Use when the user wants visually striking, shareable slide-deck IMA
 
 # Paper Slide Deck Generator
 
-Transform academic papers and content into professional slide deck images with automatic figure extraction.
+Transform any content — an article, a topic, or a paper — into stylized, shareable slide images; for PDF papers, figures are detected and extracted from the source. Generated slides are AI images that garble math and numbers, so every slide recorded as generated (`generated.json`, written by `generate-slides.py` or `proofread.ts --record`) must carry a proofread disposition before the merge scripts accept the deck (Step 6.5).
 
 ## Usage
 
@@ -75,6 +75,7 @@ a degraded mode** — do not abort:
 | `scripts/detect-figures.ts` | Auto-detect figures/tables in PDF (heuristic; verify pages) |
 | `scripts/extract-figure.ts` | Render a full PDF page to PNG (optional `--crop`; PyMuPDF fallback) |
 | `scripts/apply-template.ts` | Apply figure container template |
+| `scripts/proofread.ts` | Record a proofread disposition (`--mark`); the merge scripts' Step 6.5 gate |
 
 ## Options
 
@@ -242,6 +243,10 @@ no-key path from the Setup section (`--outline-only` + extraction + prompts hand
 
 #### Option 2: Gemini Web Skill
 
+The Web path does not write `generated.json` itself — record each slide it produces with
+`proofread.ts --record <slide-deck-dir> <slide-file> --model gemini-web`, or the merge gate
+cannot tell those slides are AI-generated (it warns when `prompts/` exists without a ledger).
+
 Read [references/gemini-web.md](references/gemini-web.md) for the consent check,
 per-slide invocation, and proxy setup. It requires the `baoyu-danger-gemini-web`
 skill and explicit user consent to the reverse-engineered-API disclaimer.
@@ -326,6 +331,20 @@ or non-Latin text), use `Read` to open the PNG and visually check:
    (or absent). Assume the model got them wrong until you confirm otherwise.
 3. **Numbers & units** — any figure that carries data matches the source exactly.
 
+**Record every disposition** — `generate-slides.py` lists each slide it produced in
+`generated.json` (with its sha256), and both merge scripts **refuse** a deck in which a
+recorded slide has no disposition or was regenerated after its disposition:
+
+```bash
+npx -y bun ${SKILL_DIR}/scripts/proofread.ts --mark <slide-deck-dir> 04-slide-results.png ok
+npx -y bun ${SKILL_DIR}/scripts/proofread.ts --mark <slide-deck-dir> 05-slide-eq.png check --note "σ garbled in eq. 2"
+```
+
+`ok` = checked, nothing wrong; `check` = still suspect after retries (listed as `[CHECK]` by the
+merge and in the Step 8 summary). Extracted-figure slides are never in `generated.json` and are
+not gated. `--allow-unproofread` on the merge scripts overrides the refusal with a warning —
+only when the user explicitly accepts an unchecked deck.
+
 **If garbling is found:**
 - Regenerate that slide with a corrected/simplified prompt (spell risky terms
   phonetically, reduce text density, move exact numbers to a caption). **Max 2 retries.**
@@ -344,6 +363,9 @@ Never silently deliver a slide with garbled math or data — always surface it.
 npx -y bun ${SKILL_DIR}/scripts/merge-to-pptx.ts <slide-deck-dir>
 npx -y bun ${SKILL_DIR}/scripts/merge-to-pdf.ts <slide-deck-dir>
 ```
+
+Both exit 1 and name the slides when an AI-generated slide has no current proofread
+disposition (Step 6.5); fix that rather than reaching for `--allow-unproofread`.
 
 ### Step 8: Output Summary
 

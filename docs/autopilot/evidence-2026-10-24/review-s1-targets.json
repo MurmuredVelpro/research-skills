@@ -1,0 +1,79 @@
+{
+  "verdict": "needs-attention",
+  "summary": "Stage 1 targets-only review of C1 (research-paper scripts/check_paper.py + scripts/integrity_gate.py) at head d3e8101 vs base 98b1ffe. All targets below were selected by the adversary (claude subagent). Mutation targets: 1. C1(a) number-in-ledger, research-paper/scripts/check_paper.py:61 - invert `if value not in covered` to `if value in covered`; must kill test_untraced_decimal_fails_and_is_named (and test_clean_fixture_passes). 2. C1(a) percentage branch, research-paper/scripts/integrity_gate.py:118 METRIC_RE - delete the `(\\d+(?:\\.\\d+)?)\\s*%` alternative; must kill test_untraced_percentage_fails (reports '93.0' not '93.0%'). 3. C1(a) n= branch, integrity_gate.py:118 - delete the `[nN]\\s*=\\s*(\\d[\\d,]*)` alternative; must kill test_untraced_sample_size_fails. 4. C1(a) PENDING exclusion, integrity_gate.py:121 - remove the first _STRIP_INLINE pattern `\\[[^\\]]*\\]`; must kill test_pending_flag_headings_and_references_are_not_numbers. 5. C1(a) ledger coverage, check_paper.py:51 - change LEDGER_COLUMNS to (\"value\",) (drop dispersion); must kill test_clean_fixture_passes (0.82/0.87/95 only in dispersion). 6. C1(a) heading guard, integrity_gate.py:141 - delete `if HEADING_RE.match(line): continue`; must kill test_clean_fixture_passes ('### 2.1 Data'). 7. C1(b) citekey->bib, integrity_gate.py:104 - change `if key not in listed` to `if False`; must kill test_citekey_without_bib_entry_fails. 8. C1(b) bib->citekey, integrity_gate.py:109 - change `if key not in cited` to `if False`; must kill test_bib_entry_never_cited_fails. 9. C1(b) exemption scope, check_paper.py:72 - change `in allow_uncited` to `not in allow_uncited`; must kill test_allow_uncited_exempts_only_the_named_entry and test_bib_entry_never_cited_fails. 10. C1(b) email guard, integrity_gate.py:82 - remove `\\w` from CITEKEY_RE lookbehind; must kill test_email_address_is_not_a_citekey. 11. C1(c) placeholder, check_paper.py:79 - replace PLACEHOLDER_PATTERN with r\"(?!)\" at the call site (keep constant so doc-lock test still passes); must kill test_fake_doi_placeholder_fails and test_pending_flag_fails_unless_disclosed. 12. C1(c) disclosure guard, check_paper.py:81 - change `allow_flags and DISCLOSED_FLAG_RE.match(hit)` to `allow_flags`; NO existing test kills this (see finding 3) - author must add one. 13. C1(c) AI-tell case-insensitivity, check_paper.py:82 - change ignore_case=True to False; must kill test_ai_tell_fails ('In recent years,'). 14. C1(d) disposition, check_paper.py:99 - change `cells[1] in UNDISPOSED` to `cells[1] in UNDISPOSED - {\"\"}` (empty no longer undisposed); must kill test_checklist_row_without_disposition_fails. 15. C1(d) missing checklist, check_paper.py:139 - change `if not checklists` to `if False`; must kill test_missing_checklist_fails_unless_skipped. 16. exit-0-on-clean / exit-1, integrity_gate.py:174 - change `if findings:` to `if findings or warnings:`; must kill test_pending_flag_fails_unless_disclosed (expects 0 with WARN). 17. exit codes, integrity_gate.py:21 - set EXIT_FINDINGS = 0; must kill every exit-1 test. 18. usage, check_paper.py:121 - drop the bib from the is_file loop; must kill test_missing_input_is_usage_error_not_pass (or raise FileNotFoundError -> test errors). Findings: two blocking C1(a) false negatives (CJK prose numbers never matched; any square-bracketed number exempt, not only [PENDING…]) and four minor detector weaknesses.",
+  "findings": [
+    {
+      "title": "C1(a) number gate is blind to numbers in Chinese prose (\\w lookbehind matches CJK)",
+      "severity": "blocking",
+      "file": "research-paper/scripts/integrity_gate.py",
+      "line_start": 117,
+      "line_end": 119,
+      "confidence": 0.9,
+      "what_goes_wrong": "METRIC_RE uses `(?<![\\w.])` and `(?![\\w])`. In Python 3 str regexes \\w matches CJK characters, so in unspaced Chinese prose a metric number adjacent to a Han character is never matched: '灵敏度为91.5%，AUC为0.912。' yields no metric numbers and '样本量n=412例' yields none. A fabricated untraced number in a zh draft passes the gate with exit 0.",
+      "why_vulnerable": "SKILL.md declares the skill serves papers 'in English or Chinese' and ships assets/paper_scaffold_zh.md, so zh drafts are an in-scope input. C1(a) says any metric-like number absent from the ledger must exit 1. The test fixture is English only, so nothing exercises this.",
+      "how_to_confirm": "Replicated METRIC_RE (copied verbatim, not project code) in python3 -I: finditer over '灵敏度为91.5%，AUC为0.912。' and '样本量n=412例' returns []. End-to-end: add a zh paragraph '灵敏度为93.2%。' to CLEAN_DRAFT with no ledger row and run check_paper.main -> expected exit 1, actual exit 0 (inference from the regex; not executed against the repo).",
+      "recommendation": "Use ASCII-only guards, e.g. `(?<![A-Za-z0-9_.])` / `(?![A-Za-z0-9_])` (or re.ASCII for the guard classes), also accept full-width ％ and ＝, and add a zh-prose test for untraced decimal, percentage and n= count."
+    },
+    {
+      "title": "C1(a) every square-bracketed number is exempt, not just [PENDING…] flags",
+      "severity": "blocking",
+      "file": "research-paper/scripts/integrity_gate.py",
+      "line_start": 120,
+      "line_end": 121,
+      "confidence": 0.85,
+      "what_goes_wrong": "The first _STRIP_INLINE pattern `\\[[^\\]]*\\]` deletes all bracketed text before metric matching. Square-bracket confidence intervals are standard in medical/imaging writing ('Dice 0.847 [95% CI 0.71, 0.80]'); the 95%, 0.71 and 0.80 are never checked against the ledger, so a fabricated CI passes with exit 0. Same for markdown link text '[AUC 0.93](fig.png)' and any '[0.93]'.",
+      "why_vulnerable": "C1(a) exempts a number only when it is 'inside a [PENDING…] flag'. The stripping is a broader exemption than the criterion allows, and the only test (test_pending_flag_headings_and_references_are_not_numbers) checks the permissive side, never that a non-PENDING bracketed number still fails.",
+      "how_to_confirm": "Replicated the strip + METRIC_RE in python3 -I on 'Dice 0.847 [95% CI 0.71, 0.80]': only '0.847' is found. End-to-end: change the fixture's '(95% CI 0.82-0.87)' to '[95% CI 0.71-0.80]' with the ledger unchanged; expected exit 1 naming 0.71, actual exit 0 (inference).",
+      "recommendation": "Strip only citation brackets (`\\[[^\\]]*@[^\\]]*\\]`) and disclosed flags (`\\[(?:PENDING|UNVERIFIED)[^\\]]*\\]`); keep link targets stripped but scan link text. Add a test that a bracketed untraced CI fails."
+    },
+    {
+      "title": "Disclosure downgrade guard untested: --allow-disclosed-flags could silence fake DOIs/xxx",
+      "severity": "minor",
+      "file": "research-paper/scripts/check_paper.py",
+      "line_start": 81,
+      "line_end": 81,
+      "confidence": 0.85,
+      "what_goes_wrong": "Mutating `allow_flags and DISCLOSED_FLAG_RE.match(hit)` to `allow_flags` downgrades every placeholder (10.xxxx, xxx, [TBD]) to WARN when --allow-disclosed-flags is passed, and the suite stays green.",
+      "why_vulnerable": "test_fake_doi_placeholder_fails runs without the flag; test_pending_flag_fails_unless_disclosed only uses a [PENDING] hit. No test combines the flag with a non-disclosable placeholder, so C1(c) under the documented flag is undetected.",
+      "how_to_confirm": "Apply the mutant and run research-paper tests: all pass (inference from reading the tests).",
+      "recommendation": "Add a test: draft with both '[PENDING: x]' and 'doi:10.xxxx/abc', run with --allow-disclosed-flags, expect exit 1 with FAIL [placeholder] for the DOI and WARN for PENDING."
+    },
+    {
+      "title": "Ledger values with thousands separators are split into fragments (false FAIL) and comma normalization is untested",
+      "severity": "minor",
+      "file": "research-paper/scripts/integrity_gate.py",
+      "line_start": 127,
+      "line_end": 162,
+      "confidence": 0.8,
+      "what_goes_wrong": "ledger_numbers tokenizes with NUMBER_RE `\\d+(?:\\.\\d+)?`, so a ledger value '1,204' becomes {'1','204'} while the draft 'n=1,204' normalizes to '1204' and is reported as untraced. Conversely, no test proves that a correctly ledgered comma count passes, so a mutant removing `.replace(\",\", \"\")` in normalize_number survives.",
+      "why_vulnerable": "This fails safe, but it produces false FAILs on correctly ledgered counts, and normalize_number's comma handling has no test pinning it.",
+      "how_to_confirm": "python3 -I replica: re.findall(r\"\\d+(?:\\.\\d+)?\", \"1,204\") -> ['1','204'].",
+      "recommendation": "Use `\\d[\\d,]*(?:\\.\\d+)?` for ledger tokens and add a test with ledger '1,204' / draft 'n=1,204' expecting exit 0."
+    },
+    {
+      "title": "Checklist gate: unchecked-box branch, TBD values and missing-cell rows are unpinned",
+      "severity": "minor",
+      "file": "research-paper/scripts/check_paper.py",
+      "line_start": 92,
+      "line_end": 101,
+      "confidence": 0.75,
+      "what_goes_wrong": "Deleting the `- [ ]` branch (92-95) or emptying UNDISPOSED except \"\" leaves the suite green. A row with the disposition cell omitted entirely ('| 3. Data sources |') splits into one cell, fails `len(cells) >= 2` and is silently accepted.",
+      "why_vulnerable": "Only one checklist test exists (empty second cell). C1(d) is about an empty disposition column; an omitted cell is the same defect in a different shape.",
+      "how_to_confirm": "Read: '| 3. Data sources |'.strip('|').split('|') -> one cell -> skipped. Mutant on lines 92-95 not killed by any test.",
+      "recommendation": "Treat a table row (after the header) with fewer than 2 cells as undisposed; add tests for '- [ ] item', '| item | TBD |' and '| item |'."
+    },
+    {
+      "title": "References-section exclusion not exercised although a test name claims it",
+      "severity": "minor",
+      "file": "research-paper/tests/test_check_paper.py",
+      "line_start": 121,
+      "line_end": 129,
+      "confidence": 0.7,
+      "what_goes_wrong": "The fixture's references line contains no decimal/percent after DOI stripping, so a mutant that never sets in_refs (integrity_gate.py:57-59) survives every test, despite test_pending_flag_headings_and_references_are_not_numbers naming references.",
+      "why_vulnerable": "Detector passes without exercising the behavior it names.",
+      "how_to_confirm": "Mutate split_body so in_refs stays False; reference line 'Smith J. ... 2024;310(2):1-12. doi:10.1148/...' produces no metric numbers and no citekeys, so all tests pass (inference).",
+      "recommendation": "Add a reference line with e.g. 'Vol 3.2, 45% ' and an '@key' inside References and assert exit 0 / no number-not-in-ledger."
+    }
+  ],
+  "limits": "snapshot-only; no command reproduction; no OS sandbox; reviewer: claude subagent (same model family as author). Read research-paper/scripts/check_paper.py, scripts/integrity_gate.py, tests/test_check_paper.py, SKILL.md and references at head d3e810193cc95d42dbc3ec09475f85265102d69f via git show; no repository code or tests were run. Regex behavior claims were checked only by copying the regexes into standalone python3 -I one-liners in the scratchpad. No evidence files are cited, so verify-evidence.sh was not run. Criteria C2-C7 are out of scope for this stage-1 request."
+}

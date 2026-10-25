@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "sandbox": "env-clean",
+  "deny_network": true,
+  "deny_paths": [],
+  "read_paths": ["/home/ubuntu/jason/research/.autopilot-deps"],
+  "env": ["PLAYWRIGHT_BROWSERS_PATH"],
+  "write_dirs": ["scholar-slides/node_modules", "paper-slide-deck/scripts/node_modules"],
+  "record_paths": {
+    "evidence_dir": "docs/autopilot/evidence-2026-10-24",
+    "run_record": "docs/autopilot/runs/2026-10-24-six-skill-takeoff.md"
+  }
+}

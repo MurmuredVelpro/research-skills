@@ -102,3 +102,65 @@ class TestWebpConversion:
     def test_corrupt_webp_raises_a_readable_error(self, gs):
         with pytest.raises(Exception, match="(?i)pillow|webp|image"):
             gs.convert_webp_to_png(b"not a webp at all")
+
+
+def test_record_generated_writes_sha_prompt_and_model(gs, tmp_path):
+    import hashlib
+    import json
+
+    slide = tmp_path / "03-slide-results.png"
+    slide.write_bytes(b"\x89PNG fake bytes")
+    gs.record_generated(tmp_path, slide, tmp_path / "prompts" / "03-slide-results.md", "gemini-x")
+    entry = json.loads((tmp_path / "generated.json").read_text())["slides"]["03-slide-results.png"]
+    assert entry == {
+        "sha256": hashlib.sha256(b"\x89PNG fake bytes").hexdigest(),
+        "prompt": "prompts/03-slide-results.md",
+        "model": "gemini-x",
+    }
+
+
+def test_record_generated_keeps_other_slides_and_replaces_a_new_extension(gs, tmp_path):
+    import json
+
+    (tmp_path / "01-slide-cover.png").write_bytes(b"a")
+    gs.record_generated(tmp_path, tmp_path / "01-slide-cover.png", tmp_path / "p" / "01-slide-cover.md", "m")
+    (tmp_path / "02-slide-x.png").write_bytes(b"b")
+    gs.record_generated(tmp_path, tmp_path / "02-slide-x.png", tmp_path / "p" / "02-slide-x.md", "m")
+    (tmp_path / "02-slide-x.jpg").write_bytes(b"c")
+    gs.record_generated(tmp_path, tmp_path / "02-slide-x.jpg", tmp_path / "p" / "02-slide-x.md", "m")
+    slides = json.loads((tmp_path / "generated.json").read_text())["slides"]
+    assert sorted(slides) == ["01-slide-cover.png", "02-slide-x.jpg"]
+
+
+def test_main_records_every_slide_it_generates(gs, tmp_path, monkeypatch):
+    """回归（对抗方 S5-1）：接线必须走 main()——只测 record_generated 时删掉调用也全绿。"""
+    import json
+    from types import SimpleNamespace
+
+    (tmp_path / "prompts").mkdir()
+    (tmp_path / "prompts" / "01-slide-cover.md").write_text("cover", encoding="utf-8")
+    png = b"\x89PNG\r\n\x1a\n" + b"0" * 64
+    part = SimpleNamespace(inline_data=SimpleNamespace(data=png, mime_type="image/png"))
+    response = SimpleNamespace(candidates=[SimpleNamespace(content=SimpleNamespace(parts=[part]))])
+    client = SimpleNamespace(models=SimpleNamespace(generate_content=lambda **_: response))
+    genai = SimpleNamespace(Client=lambda api_key: client)
+    types = SimpleNamespace(GenerateContentConfig=lambda **k: k, ImageConfig=lambda **k: k)
+    monkeypatch.setattr(gs, "check_dependencies", lambda: (genai, types))
+    monkeypatch.setenv("GOOGLE_API_KEY", "k-test")
+    monkeypatch.setattr(sys, "argv", ["generate-slides.py", str(tmp_path), "--model", "gemini-x"])
+
+    gs.main()
+
+    slides = json.loads((tmp_path / "generated.json").read_text())["slides"]
+    assert list(slides) == ["01-slide-cover.png"]
+    assert slides["01-slide-cover.png"]["model"] == "gemini-x"
+
+
+def test_unrecorded_existing_names_skipped_slides_missing_from_the_ledger(gs, tmp_path):
+    (tmp_path / "prompts").mkdir()
+    for stem in ("01-slide-a", "02-slide-b"):
+        (tmp_path / "prompts" / f"{stem}.md").write_text("p", encoding="utf-8")
+        (tmp_path / f"{stem}.png").write_bytes(b"x" * 20000)
+    gs.record_generated(tmp_path, tmp_path / "01-slide-a.png", tmp_path / "prompts" / "01-slide-a.md", "m")
+    prompts = gs.list_prompt_files(tmp_path / "prompts")
+    assert gs.unrecorded_existing(prompts, tmp_path) == ["02-slide-b.png"]

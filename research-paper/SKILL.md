@@ -89,7 +89,11 @@ Phase 5 gates grep exactly that filename — a renamed draft makes them scan an
 empty file and report a false zero-hit); after each section, before starting the next:
 
 1. Every citation in the section is from the verified pool (rules:
-   [references/CITATION_INTEGRITY.md](references/CITATION_INTEGRITY.md)).
+   [references/CITATION_INTEGRITY.md](references/CITATION_INTEGRITY.md)),
+   written as a **stable pandoc citekey** `[@smith2024model]` that has an entry
+   in `references.bib` — never a hand-numbered `[17]` in the working draft.
+   The venue's numeric/author-year style is rendered only at the end
+   (`pandoc paper_draft.md --citeproc --bibliography references.bib --csl <venue>.csl`).
 2. Every number in the section reconciles against `results_ledger.csv`.
 3. Self-check against the AI-tell list and style rules
    ([references/WRITING_STYLE.md](references/WRITING_STYLE.md)) — the Phase 5
@@ -99,14 +103,31 @@ empty file and report a false zero-hit); after each section, before starting the
 
 ## Phase 5: Gates + reporting checklist + submission pack
 
-Mechanical gates (paste command output as evidence):
+Mechanical gates (paste command output as evidence). Run the executable gate
+first — it covers all four mechanical checks in one pass and names every
+offending line:
+
+```bash
+python3 <skill_dir>/scripts/check_paper.py paper_draft.md \
+    --ledger results_ledger.csv --bib references.bib
+# exit 0 = no mechanical findings (not proof the paper is right); 1 = findings; 2 = bad input
+# --allow-disclosed-flags : [PENDING…]/[UNVERIFIED…] already disclosed → warnings, not failures
+# --allow-uncited KEY     : bib entry listed on purpose without in-text citation (venue norm)
+# --skip-checklist        : drafting-stage run before checklist_<name>.md exists (warned)
+```
+
+It checks: (1) every metric-like number in the prose (decimals, percentages,
+`n=`) is covered by a `results_ledger.csv` `value`/`dispersion`; (2) `[@citekey]`
+↔ `references.bib` both directions; (3) the placeholder and AI-tell patterns
+below (same regex, locked by tests); (4) every `checklist_*.md` row carries a
+disposition. Without Python, the two grep gates are the minimum:
 
 ```bash
 # 1) Placeholder gate — zero hits (or disclosed [UNVERIFIED]/[PENDING])
 grep -nE "xxx|XXXX|\[TBD\]|\[PENDING|\[UNVERIFIED[^]]*\]|10\.xxxx|doi:10\.[a-z]+/x" paper_draft.md
 
 # 2) AI-tell gate — zero hits
-grep -nEi "over the past ((few|several|two|three) )?(decades?|years)|in recent years,|it is worth noting|plays a (crucial|pivotal) role|has garnered significant attention|delves into|a testament to|众所周知|近年来，?随着|日益受到(广泛)?关注" paper_draft.md
+grep -nEi "over the past ((few|several|two|three) )?(decades?|years)|in recent years,|it is worth noting|plays a (crucial|pivotal|vital) role|sheds light on|paves the way|ever-evolving|has garnered significant attention|delves into|a testament to|众所周知|近年来，?随着|日益受到(广泛)?关注" paper_draft.md
 ```
 
 Then: work through the binding reporting checklist item by item

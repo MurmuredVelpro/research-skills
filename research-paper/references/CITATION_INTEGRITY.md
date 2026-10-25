@@ -45,3 +45,9 @@ spot-list helps (covers `(Smith, 2024)`, `(Smith and Jones, 2024)`, and
 `(Smith et al., 2024)` — grep is a sample, not the census; reconcile the rest
 by reading); for numeric styles the outline-to-reference map in
 `paper_plan.md` is the audit trail.
+
+The working draft avoids that problem altogether: it cites stable pandoc
+citekeys (`[@smith2024model]`) against `references.bib`, and
+`scripts/check_paper.py` reconciles them 1:1 mechanically (citekey with no
+entry, entry never cited). The venue style is rendered from the citekeys only
+at final formatting.

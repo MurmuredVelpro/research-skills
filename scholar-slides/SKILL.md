@@ -115,6 +115,7 @@ behavior; append a dated note after any rework-worthy surprise.
 
 ## Build status
 The whole pipeline is implemented and validated on real papers. Not built: Beamer export,
-OCR for scanned PDFs, draft-deck ingestion; conference/答辩 deck types are authoring guidance
-in `references/deck-types.md` (no dedicated code). A deck is "done" only after the CKPT-3
+OCR for scanned PDFs, draft-deck ingestion. Conference and 答辩 decks use the same registered
+layouts; their required content roles are checked by the QA gate's `deckTypeAudit`
+(`meta.deck_type`, see `references/deck-types.md`). A deck is "done" only after the CKPT-3
 human truth sign-off — the gate surfaces defects but cannot certify truth.

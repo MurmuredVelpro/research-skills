@@ -51,4 +51,4 @@
 
 ## References
 
-[Venue style, consistent throughout; every entry verified to exist.]
+[Working draft: cite `[@citekey]` from references.bib; render the venue style with pandoc --citeproc at the end. Every entry verified to exist.]

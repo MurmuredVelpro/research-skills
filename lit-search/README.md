@@ -269,7 +269,7 @@ uv run lit fulltext <run> --venue "IEEE trans.*medical imaging|medical image ana
 
 ```bash
 uv run lit screen <run> --topic ... --limit 4     # 冒烟：验 API 契约（约 $0.003）
-uv run lit screen <run> --topic ... --limit 100   # 校准：验任务设计（约 $0.05）
+uv run lit screen <run> --topic ... --limit 100 --sample random --seed 1   # 校准：验任务设计（约 $0.05）
 uv run lit screen <run> --topic ...               # 放量
 ```
 

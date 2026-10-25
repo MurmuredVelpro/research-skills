@@ -1,9 +1,19 @@
 # Deck Types — time→budget, arc, density, archetypes
 
-**Status: live for 组会 (Stages 1–4); conference & 答辩 are authoring guidance (Stage 5).** The
-registered layouts already support all three — the deck *type* changes the **arc, density, slide
-budget, and which archetypes you include**, which is how you author the `deck.json`, not new code.
-Set `meta.deck_type` and follow the row below. Estimate talk length with `speaker_notes.mjs`.
+**Status: all three types are authored with the same registered layouts and checked by the QA
+gate.** The deck *type* changes the **arc, density, slide budget, and which archetypes you
+include** — that is how you author the `deck.json`. Set `meta.deck_type` (`journal-club` default,
+`conference`, `defense`) and follow the row below; `qa_report.mjs` runs `deckTypeAudit` and reports
+what the type owes its audience:
+
+| `meta.deck_type` | QA finding when missing |
+|---|---|
+| `journal-club` (or absent) | P2 per missing `critique-concerns` / `discussion-questions` slide |
+| `defense` | P2 without a `section` divider titled Backup / Appendix / 附录 followed by ≥1 slide; P2 without a slide titled for limitations or future work (局限 / 展望) |
+| `conference` | P3 on a `critique-concerns` slide (present your work; critique belongs in backup) |
+| anything else | P1 — unknown type, rules not applied |
+
+Estimate talk length with `speaker_notes.mjs`.
 
 | type | time → slides | arc | density | required / notable archetypes |
 |---|---|---|---|---|

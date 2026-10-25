@@ -84,6 +84,7 @@ Plan, conduct, and draft a medical imaging AI review whose every claim audits ba
 | `references/QUALITY_CHECKLIST.md` | Pre-submission quality checklist |
 | `scripts/init_review_project.py` | Project initializer (atomic, refuses existing targets) |
 | `scripts/audit_manuscript.py` | Executable manuscript audit (`scripts/mir_audit/` package) |
+| `scripts/import_litsearch.py` | Import a lit-search run as an immutable search export + one `search_log.csv` row (refuses re-import or a missing PRISMA total) |
 | `tests/` | Fixture test suite locking the audit and initializer contracts |
 
 ---
@@ -99,7 +100,7 @@ Transform any content into stylized, shareable slide **images** (AI-generated), 
 - **Caption-based figure detection** from PDF papers (locates the page; human confirmation recommended for dense two-column layouts)
 - **Figure-to-slide mapping** with full-page high-res render + template container (not per-figure bbox cropping)
 - **17 visual styles** (academic-paper, sketch-notes, minimal, etc.)
-- **Gemini API integration** (`gemini-3-pro-image`) for AI slide generation, with a post-generation garbled-text proofread pass
+- **Gemini API integration** (`gemini-3-pro-image`) for AI slide generation, with an **enforced** proofread pass: every generated slide needs a recorded disposition bound to its bytes before PPTX/PDF merge
 - **PPTX/PDF export** with merge scripts
 
 ### Workflow
@@ -128,6 +129,7 @@ Transform any content into stylized, shareable slide **images** (AI-generated), 
 | `apply-template.ts` | Academic figure container template |
 | `merge-to-pptx.ts` | PPTX generation |
 | `merge-to-pdf.ts` | PDF generation |
+| `proofread.ts` | Proofread dispositions; merges refuse unproofread AI-generated slides |
 
 ---
 
@@ -139,6 +141,7 @@ Generate high-quality academic research proposals — PhD applications, research
 
 - **Structured 5-phase workflow** with a **write-with-verify** content stage: Requirements → Literature (+verification gate) → Outline (approval red line) → Content (section-by-section) → Output
 - **Citation-integrity guardrails**: every reference verified to exist (DOI/PMID/arXiv or Zotero) with author and year matching the source — unverifiable entries are flagged, never fabricated
+- **Executable citation gate**: `scripts/check_proposal.py` reconciles in-text citations ↔ References both ways (APA author-year or GB/T 7714 `[N]`), fails on mixed styles instead of half-checking, and catches placeholders, AI tells and leftover scaffold instructions (shares its core, byte-identical, with research-paper)
 - **Multi-source literature integration**: WebSearch, Zotero MCP, arXiv, PubMed (with tool-portable fallbacks)
 - **Bilingual support**: English and Chinese (中文)
 - **Domain adaptation**: STEM (incl. computational / ML / AI-for-Science), Humanities, Social Sciences
@@ -168,7 +171,7 @@ Generate high-quality academic research proposals — PhD applications, research
 
 ### Output
 
-- Target: 2,000-4,000 words (default ~3,000)
+- Target: 2,000-4,000 words (default ~3,000) for a PhD proposal; 开题报告 follows the institution's required length (常见 10,000–30,000 字)
 - References: count follows the argument (typically 25–50; no minimum, no padding), each verified
 - 3-5 figure suggestions
 - Markdown format (convertible to DOCX/PDF via pandoc)
@@ -191,6 +194,12 @@ already done. Two disciplines distinguish it from the proposal/review skills:
 Citation discipline is the repository's shared five-rule core in journal-style form
 ([docs/citation-integrity-core.md](./docs/citation-integrity-core.md)); the related-work
 corpus can be built by **lit-search** and consumed directly.
+
+The Phase 5 gates are executable: `scripts/check_paper.py paper_draft.md --ledger
+results_ledger.csv --bib references.bib` fails on any metric-like number (decimal, %, `n=`)
+the ledger does not cover — including in Chinese prose and bracketed CIs — on `[@citekey]` ↔
+`references.bib` orphans in either direction, on placeholder/AI-tell hits, and on reporting-
+checklist rows without a disposition. Exit 0 means no mechanical findings, not a correct paper.
 
 ---
 
